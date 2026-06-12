@@ -31,7 +31,7 @@
   }
   .screen.active { display: flex; }
 
-  /* ---------- shared background scenery (Kenney, CC0) ---------- */
+  /* ---------- shared background scenery ---------- */
   .scenery { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
   .sun {
     position: absolute; top: 6%; right: 10%;
@@ -59,7 +59,7 @@
   .forest-layer.far  { height: 52%; opacity: .65; }
   .forest-layer.near { height: 62%; }
   .forest-layer .tree { position: absolute; bottom: 0; }
-  .forest-layer .tree img { display: block; width: 100%; height: auto; }
+  .forest-layer .tree svg { display: block; width: 100%; height: 100%; }
   .ground {
     position: absolute; left: 0; bottom: 0; width: 260vw; height: 13%;
     background: linear-gradient(var(--floor), #93bd6e);
@@ -164,17 +164,6 @@
     transition: transform .7s cubic-bezier(.34,1.45,.5,1), opacity .45s;
   }
   .gem.revealed img.stone { transform: translateY(0) scale(1); opacity: 1; }
-  .gem .spot {
-    position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
-    width: 100px; z-index: 2;
-  }
-  .gem .spot svg { display: block; width: 100%; }
-  .gem .spot.rustle { animation: rustle .5s; }
-  @keyframes rustle {
-    20% { transform: translateX(-50%) rotate(-4deg); }
-    50% { transform: translateX(-50%) rotate(4deg); }
-    80% { transform: translateX(-50%) rotate(-2deg); }
-  }
   .gem .word {
     margin-bottom: 2px; display: inline-block;
     background: rgba(255,255,255,.9); border-radius: 14px;
@@ -190,8 +179,7 @@
     25% { transform: translateX(-6px) rotate(-3deg); }
     75% { transform: translateX(6px) rotate(3deg); }
   }
-  .gem.collected { transition: all .65s cubic-bezier(.5,-0.3,.7,1); opacity: .9; }
-  .gem.collected .spot { opacity: 0; transition: opacity .3s; }
+  .gem.collected { transition: all .65s cubic-bezier(.5,-0.3,.7,1); opacity: .9; z-index: 7; }
   .gem.missed img.stone { transform: translateY(42px) scale(.4); opacity: 0; }
   .gem.missed .word, .gem.missed .timer-ring { opacity: 0; }
   .gem.missed { transition: opacity .6s ease .7s; opacity: 0; }
@@ -367,18 +355,18 @@ function animalImg(kind) {
   return `<img src="assets/sprites/animals/${kind}.png" alt="${ANIMAL_NAMES[kind]}">`;
 }
 
-/* hand-drawn fairy, matching the flat cartoon style */
+/* hand-drawn fairy in the Bluey-inspired palette */
 const FAIRY_SVG = `<svg viewBox="0 0 90 100">
-  <ellipse cx="28" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(-25 28 42)"/>
-  <ellipse cx="62" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(25 62 42)"/>
-  <polygon points="45,42 28,84 62,84" fill="#b487c8"/>
-  <circle cx="45" cy="30" r="13" fill="#ffd9b8"/>
-  <path d="M32 28 Q34 12 45 14 Q58 12 58 28 Q52 20 45 21 Q38 20 32 28" fill="#8a5a3b"/>
+  <ellipse cx="28" cy="42" rx="22" ry="14" fill="rgba(255,255,255,.75)" transform="rotate(-25 28 42)"/>
+  <ellipse cx="62" cy="42" rx="22" ry="14" fill="rgba(255,255,255,.75)" transform="rotate(25 62 42)"/>
+  <polygon points="45,42 28,84 62,84" fill="#4e9fd6"/>
+  <circle cx="45" cy="30" r="13" fill="#ffe0c2"/>
+  <path d="M32 28 Q34 12 45 14 Q58 12 58 28 Q52 20 45 21 Q38 20 32 28" fill="#a8743f"/>
   <circle cx="40" cy="30" r="2" fill="#3b2b20"/>
   <circle cx="50" cy="30" r="2" fill="#3b2b20"/>
   <path d="M41 36 Q45 39 49 36" stroke="#3b2b20" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-  <line x1="62" y1="60" x2="78" y2="44" stroke="#8a5a3b" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="80" cy="42" r="5" fill="#ffe08a"/>
+  <line x1="62" y1="60" x2="78" y2="44" stroke="#a8743f" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="80" cy="42" r="5" fill="#f7b961"/>
 </svg>`;
 
 /* hiding spots the gems are tucked into */
@@ -438,10 +426,16 @@ music.loop = true;
 music.volume = 0.35;
 let musicStarted = false;
 
+function playMusic() {
+  // play() may not return a promise in older engines
+  const p = music.play();
+  if (p) p.then(() => { musicStarted = true; }).catch(() => { /* blocked — retry on next gesture */ });
+}
+
 function startMusic() {
   // autoplay policies require a user gesture before audio can start
   if (musicStarted || muted) return;
-  music.play().then(() => { musicStarted = true; }).catch(() => { /* blocked — retry on next gesture */ });
+  playMusic();
 }
 
 function setMuted(m) {
@@ -449,7 +443,7 @@ function setMuted(m) {
   localStorage.setItem(MUTE_KEY, m ? "1" : "0");
   document.getElementById("muteBtn").textContent = m ? "🔇" : "🔊";
   if (m) { music.pause(); }
-  else { music.play().then(() => { musicStarted = true; }).catch(() => {}); }
+  else { playMusic(); }
 }
 
 const SFX_FILES = {
@@ -467,7 +461,8 @@ for (const [name, { src, vol }] of Object.entries(SFX_FILES)) {
     if (muted) return;
     const a = base.cloneNode();   // clone so rapid sounds can overlap
     a.volume = vol;
-    a.play().catch(() => { /* audio unavailable — play silently */ });
+    const p = a.play();
+    if (p) p.catch(() => { /* audio unavailable — play silently */ });
   };
 }
 
@@ -481,15 +476,34 @@ function showScreen(id) {
 
 /* ============================== forest ============================== */
 
-const TREE_IMAGES = [
-  "assets/scenery/tree-round.png", "assets/scenery/tree-pine.png",
-  "assets/scenery/tree-small1.png", "assets/scenery/tree-small2.png",
-];
+/* Bluey-style gum trees: pale branching trunks, blobby clustered canopies */
+function gumTreeSVG(canopy, shade, trunk) {
+  return `<svg viewBox="0 0 80 120" preserveAspectRatio="none">
+    <path d="M38 120 Q40 84 39 64 Q39 52 30 38 M39 66 Q46 52 56 44"
+          stroke="${trunk}" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <ellipse cx="28" cy="32" rx="20" ry="15" fill="${canopy}"/>
+    <ellipse cx="56" cy="38" rx="17" ry="13" fill="${shade}"/>
+    <ellipse cx="42" cy="20" rx="18" ry="13" fill="${shade}"/>
+    <ellipse cx="40" cy="32" rx="13" ry="10" fill="${canopy}"/>
+  </svg>`;
+}
+function gumTreeTallSVG(canopy, shade, trunk) {
+  return `<svg viewBox="0 0 80 120" preserveAspectRatio="none">
+    <path d="M42 120 Q40 80 42 56 Q43 44 50 34 M42 60 Q34 48 26 44"
+          stroke="${trunk}" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <ellipse cx="52" cy="26" rx="19" ry="14" fill="${canopy}"/>
+    <ellipse cx="26" cy="38" rx="15" ry="11" fill="${shade}"/>
+    <ellipse cx="44" cy="40" rx="14" ry="10" fill="${shade}"/>
+    <ellipse cx="60" cy="40" rx="11" ry="9" fill="${canopy}"/>
+  </svg>`;
+}
 
 function buildForest() {
   const layers = [
-    { el: $("forestFar"),  count: 16, minW: 70,  maxW: 120 },
-    { el: $("forestNear"), count: 11, minW: 120, maxW: 190 },
+    { el: $("forestFar"),  count: 16, minW: 70,  maxW: 120, trunk: "#efe3cb",
+      colors: [["#bcd6a0", "#abc98e"], ["#b2cfa9", "#a0c295"]] },
+    { el: $("forestNear"), count: 11, minW: 120, maxW: 190, trunk: "#e8d7b8",
+      colors: [["#8fbb73", "#7dab62"], ["#9cc185", "#86b06e"]] },
   ];
   for (const layer of layers) {
     layer.el.innerHTML = "";
@@ -497,10 +511,13 @@ function buildForest() {
       const tree = document.createElement("div");
       tree.className = "tree";
       const w = layer.minW + Math.random() * (layer.maxW - layer.minW);
+      const [canopy, shade] = layer.colors[Math.floor(Math.random() * layer.colors.length)];
       tree.style.width = w + "px";
+      tree.style.height = (w * 1.45) + "px";
       tree.style.left = (i / layer.count * 250 + Math.random() * 8) + "vw";
-      const src = TREE_IMAGES[Math.floor(Math.random() * TREE_IMAGES.length)];
-      tree.innerHTML = `<img src="${src}" alt="">`;
+      tree.innerHTML = Math.random() < 0.45
+        ? gumTreeTallSVG(canopy, shade, layer.trunk)
+        : gumTreeSVG(canopy, shade, layer.trunk);
       layer.el.appendChild(tree);
     }
   }
@@ -701,9 +718,7 @@ function spawnGem(delay = 0) {
           <circle class="left" cx="38" cy="38" r="${r}" stroke-dasharray="${circ}" stroke-dashoffset="0"/>
         </svg>
         ${gemImg(color)}
-        <div class="spot">${SPOT_SVGS[spotKind]}</div>
-      </div>
-      <div class="word"></div>`;
+      </div>`;
     $("playArea").appendChild(el);
 
     const gem = { id, word, color, typed: 0, el, hideout, revealed: false,
