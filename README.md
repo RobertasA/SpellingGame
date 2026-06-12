@@ -9,3 +9,8 @@ We also get challenges - where we need to collect specific colour gems - e.g. th
 
 Each collected gem has a chance of giving a reward - e.g. an animal to your menagerie. The collected animals add up to your crew, creating a lovely cottagecore+woodland aesthetic. 
 
+
+## Assets
+
+All art, music, and sound effects under `assets/` are CC0 open-source assets —
+see [CREDITS.md](CREDITS.md) for sources and authors.

@@ -31,7 +31,7 @@
   }
   .screen.active { display: flex; }
 
-  /* ---------- shared background scenery ---------- */
+  /* ---------- shared background scenery (Kenney, CC0) ---------- */
   .scenery { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
   .sun {
     position: absolute; top: 6%; right: 10%;
@@ -59,7 +59,7 @@
   .forest-layer.far  { height: 52%; opacity: .65; }
   .forest-layer.near { height: 62%; }
   .forest-layer .tree { position: absolute; bottom: 0; }
-  .forest-layer .tree svg { display: block; width: 100%; height: 100%; }
+  .forest-layer .tree img { display: block; width: 100%; height: auto; }
   .ground {
     position: absolute; left: 0; bottom: 0; width: 260vw; height: 13%;
     background: linear-gradient(var(--floor), #93bd6e);
@@ -117,6 +117,11 @@
     font-family: inherit; border: none; border-radius: 16px;
     background: rgba(255,255,255,.8); padding: 6px 14px; cursor: pointer; color: var(--ink);
   }
+  #muteBtn {
+    position: absolute; top: 12px; right: 12px; z-index: 30;
+    font-family: inherit; font-size: 1.1rem; border: none; border-radius: 16px;
+    background: rgba(255,255,255,.8); padding: 6px 12px; cursor: pointer;
+  }
 
   /* fairy */
   #fairy {
@@ -152,13 +157,24 @@
     transition: opacity .3s;
   }
   .gem .nest { position: relative; width: 110px; height: 104px; margin: 0 auto; }
-  .gem svg.stone {
-    width: 64px; height: 64px; display: block;
-    position: absolute; left: 23px; bottom: 24px;
+  .gem img.stone {
+    width: 62px; height: 62px; display: block;
+    position: absolute; left: 24px; bottom: 25px;
     transform: translateY(42px) scale(.4); opacity: 0;
     transition: transform .7s cubic-bezier(.34,1.45,.5,1), opacity .45s;
   }
-  .gem.revealed svg.stone { transform: translateY(0) scale(1); opacity: 1; }
+  .gem.revealed img.stone { transform: translateY(0) scale(1); opacity: 1; }
+  .gem .spot {
+    position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
+    width: 100px; z-index: 2;
+  }
+  .gem .spot svg { display: block; width: 100%; }
+  .gem .spot.rustle { animation: rustle .5s; }
+  @keyframes rustle {
+    20% { transform: translateX(-50%) rotate(-4deg); }
+    50% { transform: translateX(-50%) rotate(4deg); }
+    80% { transform: translateX(-50%) rotate(-2deg); }
+  }
   .gem .word {
     margin-bottom: 2px; display: inline-block;
     background: rgba(255,255,255,.9); border-radius: 14px;
@@ -174,8 +190,9 @@
     25% { transform: translateX(-6px) rotate(-3deg); }
     75% { transform: translateX(6px) rotate(3deg); }
   }
-  .gem.collected { transition: all .65s cubic-bezier(.5,-0.3,.7,1); opacity: .9; z-index: 7; }
-  .gem.missed svg.stone { transform: translateY(42px) scale(.4); opacity: 0; }
+  .gem.collected { transition: all .65s cubic-bezier(.5,-0.3,.7,1); opacity: .9; }
+  .gem.collected .spot { opacity: 0; transition: opacity .3s; }
+  .gem.missed img.stone { transform: translateY(42px) scale(.4); opacity: 0; }
   .gem.missed .word, .gem.missed .timer-ring { opacity: 0; }
   .gem.missed { transition: opacity .6s ease .7s; opacity: 0; }
   .timer-ring {
@@ -198,7 +215,7 @@
     width: 26px; height: 26px; border-radius: 6px;
     background: rgba(0,0,0,.07); display: flex; align-items: center; justify-content: center;
   }
-  #bag .slot svg { width: 22px; height: 22px; }
+  #bag .slot img { width: 22px; height: 22px; }
 
   /* toasts / reward popup */
   #rewardToast {
@@ -208,7 +225,7 @@
     transition: transform .35s cubic-bezier(.2,1.6,.4,1);
   }
   #rewardToast.show { transform: translateX(-50%) scale(1); }
-  #rewardToast svg { width: 80px; height: 80px; }
+  #rewardToast img { width: 80px; height: 80px; }
   #rewardToast .msg { font-size: 1.15rem; margin-top: 6px; }
 
   /* ---------- overlays (level complete) ---------- */
@@ -225,7 +242,7 @@
   .card h2 { color: var(--accent); font-size: 2rem; margin-bottom: .5em; }
   .card .stats { font-size: 1.1rem; margin-bottom: 1em; line-height: 1.7; }
   .card .new-animals { margin-bottom: 1em; }
-  .card .new-animals svg { width: 56px; height: 56px; margin: 0 4px; }
+  .card .new-animals img { width: 56px; height: 56px; margin: 0 4px; }
   .card .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
   /* ---------- menagerie ---------- */
@@ -236,7 +253,7 @@
   }
   #menagerieGrid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
   #menagerieGrid .pet { text-align: center; font-size: .8rem; }
-  #menagerieGrid .pet svg { width: 64px; height: 64px; display: block; }
+  #menagerieGrid .pet img { width: 64px; height: 64px; display: block; margin: 0 auto 4px; }
   .empty-note { opacity: .7; font-style: italic; }
 </style>
 </head>
@@ -257,6 +274,8 @@
   <div class="firefly" style="left:88%; top:38%; animation-delay:-1.6s;"></div>
 </div>
 
+<button id="muteBtn" title="Toggle music & sound">🔊</button>
+
 <!-- title screen -->
 <div class="screen active" id="titleScreen">
   <h1 class="title">✨ Gem Fairy ✨</h1>
@@ -264,7 +283,7 @@
   <div class="menu-buttons">
     <button class="big primary" id="playBtn">Play</button>
     <div class="level-row" id="levelRow"></div>
-    <button class="big" id="menagerieBtn">Menagerie 🦊</button>
+    <button class="big" id="menagerieBtn">Menagerie 🦉</button>
   </div>
 </div>
 
@@ -314,11 +333,11 @@
 const LEVELS = [
   { // level 1 — gentle introduction
     words: ["at","it","in","an","sat","sit","pin","tap","sip","pat","nap","tip"],
-    timePerGem: 12000, gemTarget: 10, maxOnScreen: 1, challenge: null,
+    timePerGem: 24000, gemTarget: 10, maxOnScreen: 1, challenge: null,
   },
   { // level 2 — faster fairy, full SATPIN set
     words: ["sat","sit","pin","tap","sip","tip","pat","tan","nap","pit","pan","nip","tin","sap","ant","pip"],
-    timePerGem: 9000, gemTarget: 10, maxOnScreen: 1, challenge: null,
+    timePerGem: 18000, gemTarget: 10, maxOnScreen: 1, challenge: null,
   },
   { // level 3 — new letters (c k e h r m d) + green-gem challenge, two gems at once
     words: ["cat","hen","red","mat","hat","rat","ten","net","pet","map","cap","can","kid","sad","ram","mad","men","dip"],
@@ -327,54 +346,40 @@ const LEVELS = [
   },
 ];
 
-const GEM_COLORS = {
-  pink:  { main: "#f48fb1", light: "#ffc1d9", dark: "#c2607f" },
-  blue:  { main: "#7eb8e8", light: "#bcdcf7", dark: "#4f86b5" },
-  gold:  { main: "#f0c75e", light: "#ffe6a3", dark: "#c19737" },
-  green: { main: "#81c784", light: "#b9e5ba", dark: "#519455" },
-};
+const GEM_COLOR_NAMES = ["pink", "blue", "gold", "green"];
 
-const ANIMALS = ["fox","rabbit","hedgehog","owl","deer","squirrel"];
+const ANIMALS = ["owl", "rabbit", "bear", "frog", "panda", "duck"];
 const ANIMAL_NAMES = {
-  fox: "Fox", rabbit: "Rabbit", hedgehog: "Hedgehog",
-  owl: "Owl", deer: "Deer", squirrel: "Squirrel",
+  owl: "Owl", rabbit: "Rabbit", bear: "Bear",
+  frog: "Frog", panda: "Panda", duck: "Duck",
 };
 const REWARD_CHANCE = 0.15;
 const STORAGE_KEY = "gemFairySave";
 
-/* ============================ svg sprites =========================== */
+/* ============================== sprites ============================= */
+/* Kenney Animal Pack & Gem Match 3 Set (both CC0) — see CREDITS.md */
 
-function gemSVG(color) {
-  const c = GEM_COLORS[color];
-  return `<svg class="stone" viewBox="0 0 64 64">
-    <polygon points="32,4 56,24 32,60 8,24" fill="${c.main}" stroke="${c.dark}" stroke-width="2"/>
-    <polygon points="32,4 44,24 32,60 20,24" fill="${c.light}" opacity=".7"/>
-    <polygon points="8,24 56,24 44,32 20,32" fill="${c.dark}" opacity=".35"/>
-    <circle cx="26" cy="16" r="3" fill="#fff" opacity=".9"/>
-  </svg>`;
+function gemImg(color) {
+  return `<img class="stone" src="assets/sprites/gems/${color}.png" alt="${color} gem">`;
 }
 
-/* Bluey-style gum trees: pale branching trunks, blobby clustered canopies */
-function gumTreeSVG(canopy, shade, trunk) {
-  return `<svg viewBox="0 0 80 120" preserveAspectRatio="none">
-    <path d="M38 120 Q40 84 39 64 Q39 52 30 38 M39 66 Q46 52 56 44"
-          stroke="${trunk}" stroke-width="9" fill="none" stroke-linecap="round"/>
-    <ellipse cx="28" cy="32" rx="20" ry="15" fill="${canopy}"/>
-    <ellipse cx="56" cy="38" rx="17" ry="13" fill="${shade}"/>
-    <ellipse cx="42" cy="20" rx="18" ry="13" fill="${shade}"/>
-    <ellipse cx="40" cy="32" rx="13" ry="10" fill="${canopy}"/>
-  </svg>`;
+function animalImg(kind) {
+  return `<img src="assets/sprites/animals/${kind}.png" alt="${ANIMAL_NAMES[kind]}">`;
 }
-function gumTreeTallSVG(canopy, shade, trunk) {
-  return `<svg viewBox="0 0 80 120" preserveAspectRatio="none">
-    <path d="M42 120 Q40 80 42 56 Q43 44 50 34 M42 60 Q34 48 26 44"
-          stroke="${trunk}" stroke-width="8" fill="none" stroke-linecap="round"/>
-    <ellipse cx="52" cy="26" rx="19" ry="14" fill="${canopy}"/>
-    <ellipse cx="26" cy="38" rx="15" ry="11" fill="${shade}"/>
-    <ellipse cx="44" cy="40" rx="14" ry="10" fill="${shade}"/>
-    <ellipse cx="60" cy="40" rx="11" ry="9" fill="${canopy}"/>
-  </svg>`;
-}
+
+/* hand-drawn fairy, matching the flat cartoon style */
+const FAIRY_SVG = `<svg viewBox="0 0 90 100">
+  <ellipse cx="28" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(-25 28 42)"/>
+  <ellipse cx="62" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(25 62 42)"/>
+  <polygon points="45,42 28,84 62,84" fill="#b487c8"/>
+  <circle cx="45" cy="30" r="13" fill="#ffd9b8"/>
+  <path d="M32 28 Q34 12 45 14 Q58 12 58 28 Q52 20 45 21 Q38 20 32 28" fill="#8a5a3b"/>
+  <circle cx="40" cy="30" r="2" fill="#3b2b20"/>
+  <circle cx="50" cy="30" r="2" fill="#3b2b20"/>
+  <path d="M41 36 Q45 39 49 36" stroke="#3b2b20" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <line x1="62" y1="60" x2="78" y2="44" stroke="#8a5a3b" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="80" cy="42" r="5" fill="#ffe08a"/>
+</svg>`;
 
 /* hiding spots the gems are tucked into */
 const SPOT_SVGS = {
@@ -401,86 +406,21 @@ const SPOT_SVGS = {
 };
 const SPOT_KINDS = Object.keys(SPOT_SVGS);
 
-const ANIMAL_SVGS = {
-  fox: `<svg viewBox="0 0 64 64">
-    <polygon points="14,10 24,24 8,26" fill="#e8833a"/>
-    <polygon points="50,10 40,24 56,26" fill="#e8833a"/>
-    <circle cx="32" cy="36" r="20" fill="#e8833a"/>
-    <polygon points="32,58 22,42 42,42" fill="#fff"/>
-    <circle cx="25" cy="33" r="3" fill="#3b2b20"/>
-    <circle cx="39" cy="33" r="3" fill="#3b2b20"/>
-    <circle cx="32" cy="44" r="3" fill="#3b2b20"/>
-  </svg>`,
-  rabbit: `<svg viewBox="0 0 64 64">
-    <ellipse cx="24" cy="14" rx="6" ry="13" fill="#bdb6c9"/>
-    <ellipse cx="40" cy="14" rx="6" ry="13" fill="#bdb6c9"/>
-    <ellipse cx="24" cy="14" rx="3" ry="9" fill="#e9c8d8"/>
-    <ellipse cx="40" cy="14" rx="3" ry="9" fill="#e9c8d8"/>
-    <circle cx="32" cy="38" r="19" fill="#bdb6c9"/>
-    <circle cx="25" cy="35" r="3" fill="#3b2b20"/>
-    <circle cx="39" cy="35" r="3" fill="#3b2b20"/>
-    <ellipse cx="32" cy="44" rx="4" ry="3" fill="#e9a0b4"/>
-  </svg>`,
-  hedgehog: `<svg viewBox="0 0 64 64">
-    <path d="M8 44 Q10 16 32 14 Q54 16 56 44 Z" fill="#8a6a4f"/>
-    <polygon points="14,22 18,10 22,22" fill="#5d4534"/>
-    <polygon points="26,18 30,6 34,18" fill="#5d4534"/>
-    <polygon points="40,20 46,9 48,22" fill="#5d4534"/>
-    <ellipse cx="32" cy="46" rx="22" ry="10" fill="#c9a87f"/>
-    <circle cx="24" cy="42" r="2.5" fill="#3b2b20"/>
-    <circle cx="40" cy="42" r="2.5" fill="#3b2b20"/>
-    <circle cx="32" cy="48" r="3" fill="#3b2b20"/>
-  </svg>`,
-  owl: `<svg viewBox="0 0 64 64">
-    <ellipse cx="32" cy="36" rx="20" ry="23" fill="#a98f6f"/>
-    <polygon points="16,16 22,24 12,24" fill="#a98f6f"/>
-    <polygon points="48,16 42,24 52,24" fill="#a98f6f"/>
-    <circle cx="24" cy="30" r="8" fill="#fdf3e3"/>
-    <circle cx="40" cy="30" r="8" fill="#fdf3e3"/>
-    <circle cx="24" cy="30" r="3.5" fill="#3b2b20"/>
-    <circle cx="40" cy="30" r="3.5" fill="#3b2b20"/>
-    <polygon points="32,36 28,42 36,42" fill="#f0c75e"/>
-    <ellipse cx="32" cy="50" rx="11" ry="8" fill="#c9b491"/>
-  </svg>`,
-  deer: `<svg viewBox="0 0 64 64">
-    <path d="M18 16 Q12 6 8 8 M18 16 Q20 8 14 4" stroke="#8a6a4f" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <path d="M46 16 Q52 6 56 8 M46 16 Q44 8 50 4" stroke="#8a6a4f" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <ellipse cx="32" cy="38" rx="18" ry="20" fill="#c9a87f"/>
-    <circle cx="25" cy="34" r="3" fill="#3b2b20"/>
-    <circle cx="39" cy="34" r="3" fill="#3b2b20"/>
-    <ellipse cx="32" cy="46" rx="5" ry="4" fill="#3b2b20"/>
-    <circle cx="22" cy="44" r="2" fill="#fff" opacity=".8"/>
-    <circle cx="42" cy="44" r="2" fill="#fff" opacity=".8"/>
-  </svg>`,
-  squirrel: `<svg viewBox="0 0 64 64">
-    <path d="M44 50 Q62 44 56 24 Q52 8 40 14 Q48 22 44 34 Z" fill="#b06f3e"/>
-    <circle cx="26" cy="38" r="17" fill="#c98a52"/>
-    <polygon points="16,24 20,12 26,22" fill="#b06f3e"/>
-    <circle cx="21" cy="35" r="3" fill="#3b2b20"/>
-    <circle cx="33" cy="35" r="3" fill="#3b2b20"/>
-    <circle cx="27" cy="44" r="3" fill="#3b2b20"/>
-  </svg>`,
-};
-
-const FAIRY_SVG = `<svg viewBox="0 0 90 100">
-  <ellipse cx="28" cy="42" rx="22" ry="14" fill="rgba(255,255,255,.75)" transform="rotate(-25 28 42)"/>
-  <ellipse cx="62" cy="42" rx="22" ry="14" fill="rgba(255,255,255,.75)" transform="rotate(25 62 42)"/>
-  <polygon points="45,42 28,84 62,84" fill="#4e9fd6"/>
-  <circle cx="45" cy="30" r="13" fill="#ffe0c2"/>
-  <path d="M32 28 Q34 12 45 14 Q58 12 58 28 Q52 20 45 21 Q38 20 32 28" fill="#a8743f"/>
-  <circle cx="40" cy="30" r="2" fill="#3b2b20"/>
-  <circle cx="50" cy="30" r="2" fill="#3b2b20"/>
-  <path d="M41 36 Q45 39 49 36" stroke="#3b2b20" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-  <line x1="62" y1="60" x2="78" y2="44" stroke="#a8743f" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="80" cy="42" r="5" fill="#f7b961"/>
-</svg>`;
-
 /* ============================ persistence ============================ */
 
 function loadSave() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const s = JSON.parse(raw);
+      // remap species from saves made before the animal set changed
+      const legacy = { fox: "duck", deer: "panda", boar: "frog", wolf: "owl",
+                       hedgehog: "frog", squirrel: "panda" };
+      s.menagerie = (s.menagerie || [])
+        .map(k => legacy[k] || k)
+        .filter(k => ANIMALS.includes(k));
+      return s;
+    }
   } catch (e) { /* corrupted save — start fresh */ }
   return { highestUnlockedLevel: 1, bestResults: {}, menagerie: [], totalGems: 0 };
 }
@@ -488,28 +428,48 @@ let save = loadSave();
 function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(save)); }
 
 /* =============================== audio ============================== */
+/* Music: "Cozy Puzzle In-Game 1" by Samza (CC0); SFX: Kenney (CC0) — see CREDITS.md */
 
-let audioCtx = null;
-function tone(freq, dur, type = "sine", vol = 0.12, when = 0) {
-  try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const t = audioCtx.currentTime + when;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = type; osc.frequency.value = freq;
-    gain.gain.setValueAtTime(vol, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start(t); osc.stop(t + dur);
-  } catch (e) { /* audio unavailable — play silently */ }
+const MUTE_KEY = "gemFairyMuted";
+let muted = localStorage.getItem(MUTE_KEY) === "1";
+
+const music = new Audio("assets/audio/music.mp3");
+music.loop = true;
+music.volume = 0.35;
+let musicStarted = false;
+
+function startMusic() {
+  // autoplay policies require a user gesture before audio can start
+  if (musicStarted || muted) return;
+  music.play().then(() => { musicStarted = true; }).catch(() => { /* blocked — retry on next gesture */ });
 }
-const sfx = {
-  key:      () => tone(880, .08, "sine", .06),
-  wrong:    () => tone(180, .15, "triangle", .08),
-  collect:  () => { tone(660, .12); tone(880, .12, "sine", .12, .09); tone(1100, .2, "sine", .12, .18); },
-  reward:   () => { [880, 1100, 1320, 1760].forEach((f, i) => tone(f, .18, "sine", .1, i * .1)); },
-  complete: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, .3, "sine", .12, i * .15)); },
+
+function setMuted(m) {
+  muted = m;
+  localStorage.setItem(MUTE_KEY, m ? "1" : "0");
+  document.getElementById("muteBtn").textContent = m ? "🔇" : "🔊";
+  if (m) { music.pause(); }
+  else { music.play().then(() => { musicStarted = true; }).catch(() => {}); }
+}
+
+const SFX_FILES = {
+  key:      { src: "assets/audio/key.ogg",      vol: 0.5 },
+  wrong:    { src: "assets/audio/wrong.ogg",    vol: 0.5 },
+  collect:  { src: "assets/audio/collect.ogg",  vol: 0.7 },
+  reward:   { src: "assets/audio/reward.ogg",   vol: 0.8 },
+  complete: { src: "assets/audio/complete.ogg", vol: 0.8 },
 };
+const sfx = {};
+for (const [name, { src, vol }] of Object.entries(SFX_FILES)) {
+  const base = new Audio(src);
+  base.preload = "auto";
+  sfx[name] = () => {
+    if (muted) return;
+    const a = base.cloneNode();   // clone so rapid sounds can overlap
+    a.volume = vol;
+    a.play().catch(() => { /* audio unavailable — play silently */ });
+  };
+}
 
 /* ============================ screen flow ============================ */
 
@@ -521,12 +481,15 @@ function showScreen(id) {
 
 /* ============================== forest ============================== */
 
+const TREE_IMAGES = [
+  "assets/scenery/tree-round.png", "assets/scenery/tree-pine.png",
+  "assets/scenery/tree-small1.png", "assets/scenery/tree-small2.png",
+];
+
 function buildForest() {
   const layers = [
-    { el: $("forestFar"),  count: 16, minW: 70,  maxW: 120, trunk: "#efe3cb",
-      colors: [["#bcd6a0", "#abc98e"], ["#b2cfa9", "#a0c295"]] },
-    { el: $("forestNear"), count: 11, minW: 120, maxW: 190, trunk: "#e8d7b8",
-      colors: [["#8fbb73", "#7dab62"], ["#9cc185", "#86b06e"]] },
+    { el: $("forestFar"),  count: 16, minW: 70,  maxW: 120 },
+    { el: $("forestNear"), count: 11, minW: 120, maxW: 190 },
   ];
   for (const layer of layers) {
     layer.el.innerHTML = "";
@@ -534,13 +497,10 @@ function buildForest() {
       const tree = document.createElement("div");
       tree.className = "tree";
       const w = layer.minW + Math.random() * (layer.maxW - layer.minW);
-      const [canopy, shade] = layer.colors[Math.floor(Math.random() * layer.colors.length)];
       tree.style.width = w + "px";
-      tree.style.height = (w * 1.45) + "px";
       tree.style.left = (i / layer.count * 250 + Math.random() * 8) + "vw";
-      tree.innerHTML = Math.random() < 0.45
-        ? gumTreeTallSVG(canopy, shade, layer.trunk)
-        : gumTreeSVG(canopy, shade, layer.trunk);
+      const src = TREE_IMAGES[Math.floor(Math.random() * TREE_IMAGES.length)];
+      tree.innerHTML = `<img src="${src}" alt="">`;
       layer.el.appendChild(tree);
     }
   }
@@ -582,7 +542,7 @@ function renderMenagerie() {
   save.menagerie.forEach(kind => {
     const pet = document.createElement("div");
     pet.className = "pet";
-    pet.innerHTML = `${ANIMAL_SVGS[kind]}<div>${ANIMAL_NAMES[kind]}</div>`;
+    pet.innerHTML = `${animalImg(kind)}<div>${ANIMAL_NAMES[kind]}</div>`;
     grid.appendChild(pet);
   });
 }
@@ -690,7 +650,7 @@ function pickWord() {
 }
 
 function pickColor() {
-  const names = Object.keys(GEM_COLORS);
+  const names = GEM_COLOR_NAMES;
   const ch = game.level.challenge;
   if (ch && Math.random() < 0.4) return ch.color;
   return names[Math.floor(Math.random() * names.length)];
@@ -740,8 +700,10 @@ function spawnGem(delay = 0) {
           <circle class="track" cx="38" cy="38" r="${r}"/>
           <circle class="left" cx="38" cy="38" r="${r}" stroke-dasharray="${circ}" stroke-dashoffset="0"/>
         </svg>
-        ${gemSVG(color)}
-      </div>`;
+        ${gemImg(color)}
+        <div class="spot">${SPOT_SVGS[spotKind]}</div>
+      </div>
+      <div class="word"></div>`;
     $("playArea").appendChild(el);
 
     const gem = { id, word, color, typed: 0, el, hideout, revealed: false,
@@ -880,7 +842,7 @@ function buildBag() {
 
 function fillBagSlot(n, color) {
   const slot = $("bag").querySelector(`.slot[data-n="${n}"]`);
-  if (slot) slot.innerHTML = gemSVG(color);
+  if (slot) slot.innerHTML = gemImg(color);
 }
 
 function updateHud() {
@@ -895,7 +857,7 @@ function updateChallengePill() {
 
 function showRewardToast(kind) {
   const toast = $("rewardToast");
-  toast.innerHTML = `${ANIMAL_SVGS[kind]}<div class="msg">A ${ANIMAL_NAMES[kind].toLowerCase()} joined your crew!</div>`;
+  toast.innerHTML = `${animalImg(kind)}<div class="msg">A ${ANIMAL_NAMES[kind].toLowerCase()} joined your crew!</div>`;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2200);
 }
@@ -918,7 +880,7 @@ function finishLevel() {
     `🍂 Gems that stayed hidden: <b>${game.missed}</b>` +
     (game.level.challenge ? `<br>💚 Green gems: <b>${game.greenCount}</b>` : "");
   $("completeAnimals").innerHTML = game.newAnimals.length
-    ? `New friends! ${game.newAnimals.map(k => ANIMAL_SVGS[k]).join("")}`
+    ? `New friends! ${game.newAnimals.map(k => animalImg(k)).join("")}`
     : "";
   $("nextBtn").style.display = n < LEVELS.length ? "" : "none";
   $("completeOverlay").classList.add("active");
@@ -989,6 +951,13 @@ $("menuBtn").addEventListener("click", () => {
   renderTitle();
   showScreen("titleScreen");
 });
+
+$("muteBtn").addEventListener("click", () => setMuted(!muted));
+$("muteBtn").textContent = muted ? "🔇" : "🔊";
+
+// background music may only start after the first user gesture
+window.addEventListener("pointerdown", startMusic);
+window.addEventListener("keydown", startMusic);
 
 buildForest();
 renderTitle();
