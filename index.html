@@ -32,30 +32,39 @@
   }
   .screen.active { display: flex; }
 
-  /* ---------- shared background scenery (SunnyLand Woods, CC0) ---------- */
+  /* ---------- shared background scenery (Kenney, CC0) ---------- */
   .scenery { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-  .scenery .layer {
-    position: absolute; inset: 0;
-    background-repeat: repeat-x;
-    background-size: auto 100%;
-    image-rendering: pixelated;
-    transition: background-position-x .8s ease;
+  .sun {
+    position: absolute; top: 6%; right: 10%;
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, #fff3c4, #ffe08a 60%, transparent 70%);
   }
-  #layerClouds    { background-image: url("assets/backgrounds/clouds.png"); animation: skyDrift 120s linear infinite; }
-  #layerMountains { background-image: url("assets/backgrounds/mountains.png"); }
-  #layerTrees     { background-image: url("assets/backgrounds/trees.png"); }
-  @keyframes skyDrift { from { background-position-x: 0; } to { background-position-x: -1000px; } }
-
-  /* pixel-art sprites scale crisply */
-  img.pixel { image-rendering: pixelated; }
-  .animal-sprite {
-    display: inline-block; vertical-align: bottom;
-    image-rendering: pixelated; background-repeat: no-repeat;
+  .cloud {
+    position: absolute; height: 28px; border-radius: 20px;
+    background: rgba(255,255,255,.85);
+    animation: drift linear infinite;
   }
-
-  /* invisible strip along the forest floor that carries the sprouts */
+  .cloud::before, .cloud::after {
+    content:""; position:absolute; background:inherit; border-radius:50%;
+  }
+  .cloud::before { width:34px; height:34px; top:-16px; left:12px; }
+  .cloud::after  { width:24px; height:24px; top:-10px; right:14px; }
+  @keyframes drift {
+    from { transform: translateX(-160px); }
+    to   { transform: translateX(calc(100vw + 160px)); }
+  }
+  .forest-layer {
+    position: absolute; left: 0; bottom: 0; width: 260vw;
+    transition: transform .8s ease;
+  }
+  .forest-layer.far  { height: 52%; opacity: .65; }
+  .forest-layer.near { height: 62%; }
+  .forest-layer .tree { position: absolute; bottom: 0; }
+  .forest-layer .tree img { display: block; width: 100%; height: auto; }
   .ground {
     position: absolute; left: 0; bottom: 0; width: 260vw; height: 13%;
+    background: linear-gradient(var(--floor), #6fa566);
+    border-top: 4px solid rgba(255,255,255,.25);
     transition: transform .8s ease;
   }
   .ground .sprout { position: absolute; bottom: 55%; font-size: 20px; }
@@ -136,8 +145,8 @@
   }
   .gem .nest { position: relative; width: 110px; height: 104px; margin: 0 auto; }
   .gem img.stone {
-    width: 60px; height: 60px; display: block; image-rendering: pixelated;
-    position: absolute; left: 25px; bottom: 26px;
+    width: 62px; height: 62px; display: block;
+    position: absolute; left: 24px; bottom: 25px;
     transform: translateY(42px) scale(.4); opacity: 0;
     transition: transform .7s cubic-bezier(.34,1.45,.5,1), opacity .45s;
   }
@@ -193,7 +202,7 @@
     width: 26px; height: 26px; border-radius: 6px;
     background: rgba(0,0,0,.07); display: flex; align-items: center; justify-content: center;
   }
-  #bag .slot img { width: 22px; height: 22px; image-rendering: pixelated; }
+  #bag .slot img { width: 22px; height: 22px; }
 
   /* toasts / reward popup */
   #rewardToast {
@@ -203,6 +212,7 @@
     transition: transform .35s cubic-bezier(.2,1.6,.4,1);
   }
   #rewardToast.show { transform: translateX(-50%) scale(1); }
+  #rewardToast img { width: 80px; height: 80px; }
   #rewardToast .msg { font-size: 1.15rem; margin-top: 6px; }
 
   /* ---------- overlays (level complete) ---------- */
@@ -219,7 +229,7 @@
   .card h2 { color: var(--accent); font-size: 2rem; margin-bottom: .5em; }
   .card .stats { font-size: 1.1rem; margin-bottom: 1em; line-height: 1.7; }
   .card .new-animals { margin-bottom: 1em; }
-  .card .new-animals .animal-sprite { margin: 0 6px; }
+  .card .new-animals img { width: 56px; height: 56px; margin: 0 4px; }
   .card .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
   /* ---------- menagerie ---------- */
@@ -230,7 +240,7 @@
   }
   #menagerieGrid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
   #menagerieGrid .pet { text-align: center; font-size: .8rem; }
-  #menagerieGrid .pet .animal-sprite { display: block; margin: 0 auto 4px; }
+  #menagerieGrid .pet img { width: 64px; height: 64px; display: block; margin: 0 auto 4px; }
   .empty-note { opacity: .7; font-style: italic; }
 </style>
 </head>
@@ -238,9 +248,12 @@
 
 <!-- shared scenery -->
 <div class="scenery" id="scenery">
-  <div class="layer" id="layerClouds"></div>
-  <div class="layer" id="layerMountains"></div>
-  <div class="layer" id="layerTrees"></div>
+  <div class="sun"></div>
+  <div class="cloud" style="top:12%; width:70px; animation-duration:55s;"></div>
+  <div class="cloud" style="top:22%; width:90px; animation-duration:75s; animation-delay:-30s;"></div>
+  <div class="cloud" style="top:8%;  width:60px; animation-duration:65s; animation-delay:-50s;"></div>
+  <div class="forest-layer far" id="forestFar"></div>
+  <div class="forest-layer near" id="forestNear"></div>
   <div class="ground" id="ground"></div>
   <div class="firefly" style="left:18%; top:48%; animation-delay:-1s;"></div>
   <div class="firefly" style="left:46%; top:40%; animation-delay:-2.2s;"></div>
@@ -257,7 +270,7 @@
   <div class="menu-buttons">
     <button class="big primary" id="playBtn">Play</button>
     <div class="level-row" id="levelRow"></div>
-    <button class="big" id="menagerieBtn">Menagerie 🦊</button>
+    <button class="big" id="menagerieBtn">Menagerie 🦉</button>
   </div>
 </div>
 
@@ -322,50 +335,38 @@ const LEVELS = [
 
 const GEM_COLOR_NAMES = ["pink", "blue", "gold", "green"];
 
-const ANIMALS = ["fox", "rabbit", "deer", "bear", "boar", "wolf"];
+const ANIMALS = ["owl", "rabbit", "bear", "frog", "panda", "duck"];
 const ANIMAL_NAMES = {
-  fox: "Fox", rabbit: "Rabbit", deer: "Deer",
-  bear: "Bear", boar: "Boar", wolf: "Wolf",
-};
-/* idle sprite sheets: frame size and count (Animated Wild Animals, CC0) */
-const ANIMAL_SPRITES = {
-  fox:    { frames: 6,  w: 64, h: 36 },
-  rabbit: { frames: 10, w: 32, h: 26 },
-  deer:   { frames: 10, w: 72, h: 52 },
-  bear:   { frames: 12, w: 64, h: 33 },
-  boar:   { frames: 8,  w: 64, h: 40 },
-  wolf:   { frames: 16, w: 40, h: 40 },
+  owl: "Owl", rabbit: "Rabbit", bear: "Bear",
+  frog: "Frog", panda: "Panda", duck: "Duck",
 };
 const REWARD_CHANCE = 0.15;
 const STORAGE_KEY = "gemFairySave";
 
 /* ============================== sprites ============================= */
-/* Pixel art: Tiny Creatures (CC0), GEMS!!! by Winternaut (CC0) — see CREDITS.md */
+/* Kenney Animal Pack & Gem Match 3 Set (both CC0) — see CREDITS.md */
 
 function gemImg(color) {
-  return `<img class="stone pixel" src="assets/sprites/gems/${color}.png" alt="${color} gem">`;
+  return `<img class="stone" src="assets/sprites/gems/${color}.png" alt="${color} gem">`;
 }
 
 function animalImg(kind) {
-  return `<span class="animal-sprite animal-${kind}" role="img" aria-label="${ANIMAL_NAMES[kind]}"></span>`;
+  return `<img src="assets/sprites/animals/${kind}.png" alt="${ANIMAL_NAMES[kind]}">`;
 }
 
-// build one CSS rule + keyframes per animal so its idle sheet plays as a loop
-function buildAnimalStyles() {
-  const SCALE = 2;
-  let css = "";
-  for (const [kind, sp] of Object.entries(ANIMAL_SPRITES)) {
-    const w = sp.w * SCALE, h = sp.h * SCALE, total = sp.frames * w;
-    css += `.animal-${kind}{width:${w}px;height:${h}px;` +
-           `background-image:url("assets/sprites/animals/${kind}.png");` +
-           `background-size:${total}px ${h}px;` +
-           `animation:anim-${kind} ${(sp.frames * 0.15).toFixed(2)}s steps(${sp.frames}) infinite;}` +
-           `@keyframes anim-${kind}{to{background-position-x:-${total}px;}}`;
-  }
-  const style = document.createElement("style");
-  style.textContent = css;
-  document.head.appendChild(style);
-}
+/* hand-drawn fairy, matching the flat cartoon style */
+const FAIRY_SVG = `<svg viewBox="0 0 90 100">
+  <ellipse cx="28" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(-25 28 42)"/>
+  <ellipse cx="62" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(25 62 42)"/>
+  <polygon points="45,42 28,84 62,84" fill="#b487c8"/>
+  <circle cx="45" cy="30" r="13" fill="#ffd9b8"/>
+  <path d="M32 28 Q34 12 45 14 Q58 12 58 28 Q52 20 45 21 Q38 20 32 28" fill="#8a5a3b"/>
+  <circle cx="40" cy="30" r="2" fill="#3b2b20"/>
+  <circle cx="50" cy="30" r="2" fill="#3b2b20"/>
+  <path d="M41 36 Q45 39 49 36" stroke="#3b2b20" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <line x1="62" y1="60" x2="78" y2="44" stroke="#8a5a3b" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="80" cy="42" r="5" fill="#ffe08a"/>
+</svg>`;
 
 /* hiding spots the gems are tucked into */
 const SPOT_SVGS = {
@@ -400,7 +401,8 @@ function loadSave() {
     if (raw) {
       const s = JSON.parse(raw);
       // remap species from saves made before the animal set changed
-      const legacy = { hedgehog: "boar", owl: "wolf", squirrel: "bear" };
+      const legacy = { fox: "duck", deer: "panda", boar: "frog", wolf: "owl",
+                       hedgehog: "frog", squirrel: "panda" };
       s.menagerie = (s.menagerie || [])
         .map(k => legacy[k] || k)
         .filter(k => ANIMALS.includes(k));
@@ -466,8 +468,29 @@ function showScreen(id) {
 
 /* ============================== forest ============================== */
 
+const TREE_IMAGES = [
+  "assets/scenery/tree-round.png", "assets/scenery/tree-pine.png",
+  "assets/scenery/tree-small1.png", "assets/scenery/tree-small2.png",
+];
+
 function buildForest() {
-  // trees come from the pixel-art background layers; only sprinkle sprouts on the floor
+  const layers = [
+    { el: $("forestFar"),  count: 16, minW: 70,  maxW: 120 },
+    { el: $("forestNear"), count: 11, minW: 120, maxW: 190 },
+  ];
+  for (const layer of layers) {
+    layer.el.innerHTML = "";
+    for (let i = 0; i < layer.count; i++) {
+      const tree = document.createElement("div");
+      tree.className = "tree";
+      const w = layer.minW + Math.random() * (layer.maxW - layer.minW);
+      tree.style.width = w + "px";
+      tree.style.left = (i / layer.count * 250 + Math.random() * 8) + "vw";
+      const src = TREE_IMAGES[Math.floor(Math.random() * TREE_IMAGES.length)];
+      tree.innerHTML = `<img src="${src}" alt="">`;
+      layer.el.appendChild(tree);
+    }
+  }
   const ground = $("ground");
   ground.innerHTML = "";
   const sprouts = ["🌼", "🍄", "🌷", "🌿", "🌼", "🍄"];
@@ -570,7 +593,7 @@ function placeFairy() {
   if (!fairy) {
     fairy = document.createElement("div");
     fairy.id = "fairy";
-    fairy.innerHTML = `<img class="pixel" src="assets/sprites/fairy.png" alt="fairy" style="width:100%;height:auto;">`;
+    fairy.innerHTML = FAIRY_SVG;
     $("playArea").appendChild(fairy);
   }
   fairy.style.left = "6%";
@@ -594,9 +617,9 @@ function fairyStepForward() {
   const fairy = $("fairy");
   const pct = 6 + Math.min(game.fairyStep, 10) * 1.5;
   fairy.style.left = pct + "%";
-  $("layerMountains").style.backgroundPositionX = `${-game.fairyStep * 10}px`;
-  $("layerTrees").style.backgroundPositionX      = `${-game.fairyStep * 26}px`;
-  $("ground").style.transform = `translateX(${-game.fairyStep * 34}px)`;
+  $("forestFar").style.transform  = `translateX(${-game.fairyStep * 10}px)`;
+  $("forestNear").style.transform = `translateX(${-game.fairyStep * 26}px)`;
+  $("ground").style.transform     = `translateX(${-game.fairyStep * 34}px)`;
 }
 
 /* ------------------------------- gems ------------------------------- */
@@ -906,7 +929,6 @@ $("muteBtn").textContent = muted ? "🔇" : "🔊";
 window.addEventListener("pointerdown", startMusic);
 window.addEventListener("keydown", startMusic);
 
-buildAnimalStyles();
 buildForest();
 renderTitle();
 </script>
