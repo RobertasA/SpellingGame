@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gem Fairy — Spelling Game</title>
+<style>
+  :root {
+    --sky-top: #cfe8f7;
+    --sky-bottom: #fdf3e3;
+    --hill-far: #cdeac0;
+    --hill-near: #a8d5a2;
+    --ink: #5b4a68;
+    --accent: #b487c8;
+    --gold: #f0c75e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "Comic Sans MS", "Chalkboard SE", "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: linear-gradient(var(--sky-top), var(--sky-bottom));
+    user-select: none;
+  }
+
+  .screen {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+  }
+  .screen.active { display: flex; }
+
+  /* ---------- shared background scenery ---------- */
+  .scenery { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .sun {
+    position: absolute; top: 6%; right: 10%;
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, #fff3c4, #ffe08a 60%, transparent 70%);
+  }
+  .cloud {
+    position: absolute; height: 28px; border-radius: 20px;
+    background: rgba(255,255,255,.85);
+    animation: drift linear infinite;
+  }
+  .cloud::before, .cloud::after {
+    content:""; position:absolute; background:inherit; border-radius:50%;
+  }
+  .cloud::before { width:34px; height:34px; top:-16px; left:12px; }
+  .cloud::after  { width:24px; height:24px; top:-10px; right:14px; }
+  @keyframes drift {
+    from { transform: translateX(-160px); }
+    to   { transform: translateX(calc(100vw + 160px)); }
+  }
+  .hills { position: absolute; left: -20vw; right: -20vw; bottom: 0; height: 34%; transition: transform .6s ease; }
+  .hill {
+    position: absolute; bottom: -40%; border-radius: 50%;
+  }
+  .hill.far  { width: 70vw; height: 80%; background: var(--hill-far); }
+  .hill.near { width: 55vw; height: 75%; background: var(--hill-near); }
+  .flower { position: absolute; bottom: 4%; font-size: 20px; }
+
+  /* ---------- title screen ---------- */
+  h1.title {
+    font-size: clamp(2.2rem, 6vw, 4rem);
+    color: var(--accent);
+    text-shadow: 0 3px 0 rgba(255,255,255,.8);
+    margin-bottom: .4em;
+    z-index: 1;
+  }
+  .subtitle { z-index: 1; margin-bottom: 2em; font-size: 1.1rem; }
+  .menu-buttons { display: flex; flex-direction: column; gap: 14px; z-index: 1; }
+  button.big {
+    font-family: inherit; font-size: 1.3rem; color: var(--ink);
+    padding: 14px 48px; border: none; border-radius: 30px;
+    background: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.12);
+    cursor: pointer; transition: transform .1s;
+  }
+  button.big:hover:not(:disabled) { transform: scale(1.05); }
+  button.big:disabled { opacity: .45; cursor: default; }
+  button.big.primary { background: var(--accent); color: #fff; }
+  .level-row { display: flex; gap: 12px; justify-content: center; }
+  .level-row button.big { padding: 14px 24px; }
+  .best-note { font-size: .75rem; display: block; opacity: .7; }
+
+  /* ---------- gameplay ---------- */
+  #playArea { position: absolute; inset: 0; }
+  .hud {
+    position: absolute; top: 12px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 28px;
+    font-size: 1.05rem; z-index: 5;
+  }
+  .hud .pill {
+    background: rgba(255,255,255,.85); border-radius: 20px;
+    padding: 6px 18px; box-shadow: 0 2px 0 rgba(0,0,0,.08);
+  }
+  #challengePill { color: #2e7d4f; font-weight: bold; }
+  #quitBtn {
+    position: absolute; top: 12px; left: 12px; z-index: 6;
+    font-family: inherit; border: none; border-radius: 16px;
+    background: rgba(255,255,255,.8); padding: 6px 14px; cursor: pointer; color: var(--ink);
+  }
+
+  /* fairy */
+  #fairy {
+    position: absolute; width: 90px; height: 100px; z-index: 4;
+    transition: left .6s ease;
+    animation: bob 2.4s ease-in-out infinite;
+  }
+  @keyframes bob { 0%,100% { margin-top: 0; } 50% { margin-top: -14px; } }
+  .sparkle {
+    position: absolute; width: 7px; height: 7px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 8px 3px rgba(255,230,150,.9);
+    pointer-events: none; animation: sparkleFade .9s forwards;
+  }
+  @keyframes sparkleFade { to { opacity: 0; transform: translateY(18px) scale(.3); } }
+
+  /* gems */
+  .gem {
+    position: absolute; width: 110px; text-align: center; z-index: 3;
+    transition: opacity .3s;
+  }
+  .gem svg.stone { width: 64px; height: 64px; display: block; margin: 0 auto; }
+  .gem .word {
+    margin-top: 4px; display: inline-block;
+    background: rgba(255,255,255,.9); border-radius: 14px;
+    padding: 4px 14px; font-size: 1.5rem; letter-spacing: 3px;
+    box-shadow: 0 2px 0 rgba(0,0,0,.1);
+  }
+  .gem .word .done { color: var(--accent); font-weight: bold; }
+  .gem.target .word { outline: 3px solid var(--accent); }
+  .gem.wiggle { animation: wiggle .3s; }
+  @keyframes wiggle {
+    25% { transform: translateX(-6px) rotate(-3deg); }
+    75% { transform: translateX(6px) rotate(3deg); }
+  }
+  .gem.collected { transition: all .65s cubic-bezier(.5,-0.3,.7,1); opacity: .9; }
+  .gem.missed { transition: all .9s ease-in; opacity: 0; }
+  .timer-ring { position: absolute; top: -6px; left: 17px; width: 76px; height: 76px; }
+  .timer-ring circle.track { fill: none; stroke: rgba(255,255,255,.6); stroke-width: 4; }
+  .timer-ring circle.left  { fill: none; stroke: var(--gold); stroke-width: 4; stroke-linecap: round;
+                             transform: rotate(-90deg); transform-origin: center; }
+
+  /* bag / progress */
+  #bag {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px; z-index: 5;
+    background: rgba(255,248,235,.92); border: 3px solid #d9b98c;
+    border-radius: 22px; padding: 10px 18px;
+  }
+  #bag .slot {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: rgba(0,0,0,.07); display: flex; align-items: center; justify-content: center;
+  }
+  #bag .slot svg { width: 22px; height: 22px; }
+
+  /* toasts / reward popup */
+  #rewardToast {
+    position: absolute; top: 24%; left: 50%; transform: translateX(-50%) scale(0);
+    background: #fff; border-radius: 24px; padding: 18px 30px; z-index: 9;
+    text-align: center; box-shadow: 0 6px 24px rgba(0,0,0,.18);
+    transition: transform .35s cubic-bezier(.2,1.6,.4,1);
+  }
+  #rewardToast.show { transform: translateX(-50%) scale(1); }
+  #rewardToast svg { width: 80px; height: 80px; }
+  #rewardToast .msg { font-size: 1.15rem; margin-top: 6px; }
+
+  /* ---------- overlays (level complete) ---------- */
+  .overlay {
+    position: absolute; inset: 0; z-index: 20; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(91,74,104,.35);
+  }
+  .overlay.active { display: flex; }
+  .card {
+    background: #fffdf7; border-radius: 28px; padding: 36px 48px;
+    text-align: center; max-width: 480px; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  }
+  .card h2 { color: var(--accent); font-size: 2rem; margin-bottom: .5em; }
+  .card .stats { font-size: 1.1rem; margin-bottom: 1em; line-height: 1.7; }
+  .card .new-animals { margin-bottom: 1em; }
+  .card .new-animals svg { width: 56px; height: 56px; margin: 0 4px; }
+  .card .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* ---------- menagerie ---------- */
+  #menagerieScreen .meadow {
+    z-index: 1; background: rgba(255,255,255,.55); border-radius: 28px;
+    padding: 28px 36px; max-width: 640px; width: 90%;
+    max-height: 60vh; overflow-y: auto;
+  }
+  #menagerieGrid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
+  #menagerieGrid .pet { text-align: center; font-size: .8rem; }
+  #menagerieGrid .pet svg { width: 64px; height: 64px; display: block; }
+  .empty-note { opacity: .7; font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- shared scenery -->
+<div class="scenery" id="scenery">
+  <div class="sun"></div>
+  <div class="cloud" style="top:12%; width:70px; animation-duration:55s;"></div>
+  <div class="cloud" style="top:22%; width:90px; animation-duration:75s; animation-delay:-30s;"></div>
+  <div class="cloud" style="top:8%;  width:60px; animation-duration:65s; animation-delay:-50s;"></div>
+  <div class="hills" id="hills">
+    <div class="hill far"  style="left:-5vw;"></div>
+    <div class="hill far"  style="left:45vw;"></div>
+    <div class="hill far"  style="left:95vw;"></div>
+    <div class="hill near" style="left:15vw;"></div>
+    <div class="hill near" style="left:70vw;"></div>
+    <div class="hill near" style="left:120vw;"></div>
+  </div>
+  <div class="flower" style="left:8%;">🌼</div>
+  <div class="flower" style="left:26%;">🌷</div>
+  <div class="flower" style="left:55%;">🌼</div>
+  <div class="flower" style="left:78%;">🍄</div>
+  <div class="flower" style="left:92%;">🌷</div>
+</div>
+
+<!-- title screen -->
+<div class="screen active" id="titleScreen">
+  <h1 class="title">✨ Gem Fairy ✨</h1>
+  <p class="subtitle">Type the words to collect falling gems!</p>
+  <div class="menu-buttons">
+    <button class="big primary" id="playBtn">Play</button>
+    <div class="level-row" id="levelRow"></div>
+    <button class="big" id="menagerieBtn">Menagerie 🦊</button>
+  </div>
+</div>
+
+<!-- gameplay screen -->
+<div class="screen" id="gameScreen">
+  <div id="playArea"></div>
+  <button id="quitBtn">← Menu</button>
+  <div class="hud">
+    <span class="pill" id="levelPill">Level 1</span>
+    <span class="pill" id="gemPill">Gems 0 / 10</span>
+    <span class="pill" id="challengePill" style="display:none;"></span>
+  </div>
+  <div id="bag"></div>
+  <div id="rewardToast"></div>
+</div>
+
+<!-- level complete overlay -->
+<div class="overlay" id="completeOverlay">
+  <div class="card">
+    <h2>Level Complete! 🎉</h2>
+    <div class="stats" id="completeStats"></div>
+    <div class="new-animals" id="completeAnimals"></div>
+    <div class="buttons">
+      <button class="big" id="replayBtn">Replay</button>
+      <button class="big primary" id="nextBtn">Next level</button>
+      <button class="big" id="menuBtn">Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- menagerie screen -->
+<div class="screen" id="menagerieScreen">
+  <h1 class="title">Your Menagerie</h1>
+  <div class="meadow">
+    <div id="menagerieGrid"></div>
+  </div>
+  <p style="z-index:1; margin-top:18px;">
+    <button class="big" id="menagerieBackBtn">← Back</button>
+  </p>
+</div>
+
+<script>
+"use strict";
+
+/* ============================== config ============================== */
+
+const LEVELS = [
+  { // level 1 — gentle introduction
+    words: ["at","it","in","an","sat","sit","pin","tap","sip","pat","nap","tip"],
+    timePerGem: 12000, gemTarget: 10, maxOnScreen: 1, challenge: null,
+  },
+  { // level 2 — faster fairy, full SATPIN set
+    words: ["sat","sit","pin","tap","sip","tip","pat","tan","nap","pit","pan","nip","tin","sap","ant","pip"],
+    timePerGem: 9000, gemTarget: 10, maxOnScreen: 1, challenge: null,
+  },
+  { // level 3 — new letters (c k e h r m d) + green-gem challenge, two gems at once
+    words: ["cat","hen","red","mat","hat","rat","ten","net","pet","map","cap","can","kid","sad","ram","mad","men","dip"],
+    timePerGem: 8000, gemTarget: 10, maxOnScreen: 2,
+    challenge: { color: "green", count: 4 },
+  },
+];
+
+const GEM_COLORS = {
+  pink:  { main: "#f48fb1", light: "#ffc1d9", dark: "#c2607f" },
+  blue:  { main: "#7eb8e8", light: "#bcdcf7", dark: "#4f86b5" },
+  gold:  { main: "#f0c75e", light: "#ffe6a3", dark: "#c19737" },
+  green: { main: "#81c784", light: "#b9e5ba", dark: "#519455" },
+};
+
+const ANIMALS = ["fox","rabbit","hedgehog","owl","deer","squirrel"];
+const ANIMAL_NAMES = {
+  fox: "Fox", rabbit: "Rabbit", hedgehog: "Hedgehog",
+  owl: "Owl", deer: "Deer", squirrel: "Squirrel",
+};
+const REWARD_CHANCE = 0.15;
+const STORAGE_KEY = "gemFairySave";
+
+/* ============================ svg sprites =========================== */
+
+function gemSVG(color) {
+  const c = GEM_COLORS[color];
+  return `<svg class="stone" viewBox="0 0 64 64">
+    <polygon points="32,4 56,24 32,60 8,24" fill="${c.main}" stroke="${c.dark}" stroke-width="2"/>
+    <polygon points="32,4 44,24 32,60 20,24" fill="${c.light}" opacity=".7"/>
+    <polygon points="8,24 56,24 44,32 20,32" fill="${c.dark}" opacity=".35"/>
+    <circle cx="26" cy="16" r="3" fill="#fff" opacity=".9"/>
+  </svg>`;
+}
+
+const ANIMAL_SVGS = {
+  fox: `<svg viewBox="0 0 64 64">
+    <polygon points="14,10 24,24 8,26" fill="#e8833a"/>
+    <polygon points="50,10 40,24 56,26" fill="#e8833a"/>
+    <circle cx="32" cy="36" r="20" fill="#e8833a"/>
+    <polygon points="32,58 22,42 42,42" fill="#fff"/>
+    <circle cx="25" cy="33" r="3" fill="#3b2b20"/>
+    <circle cx="39" cy="33" r="3" fill="#3b2b20"/>
+    <circle cx="32" cy="44" r="3" fill="#3b2b20"/>
+  </svg>`,
+  rabbit: `<svg viewBox="0 0 64 64">
+    <ellipse cx="24" cy="14" rx="6" ry="13" fill="#bdb6c9"/>
+    <ellipse cx="40" cy="14" rx="6" ry="13" fill="#bdb6c9"/>
+    <ellipse cx="24" cy="14" rx="3" ry="9" fill="#e9c8d8"/>
+    <ellipse cx="40" cy="14" rx="3" ry="9" fill="#e9c8d8"/>
+    <circle cx="32" cy="38" r="19" fill="#bdb6c9"/>
+    <circle cx="25" cy="35" r="3" fill="#3b2b20"/>
+    <circle cx="39" cy="35" r="3" fill="#3b2b20"/>
+    <ellipse cx="32" cy="44" rx="4" ry="3" fill="#e9a0b4"/>
+  </svg>`,
+  hedgehog: `<svg viewBox="0 0 64 64">
+    <path d="M8 44 Q10 16 32 14 Q54 16 56 44 Z" fill="#8a6a4f"/>
+    <polygon points="14,22 18,10 22,22" fill="#5d4534"/>
+    <polygon points="26,18 30,6 34,18" fill="#5d4534"/>
+    <polygon points="40,20 46,9 48,22" fill="#5d4534"/>
+    <ellipse cx="32" cy="46" rx="22" ry="10" fill="#c9a87f"/>
+    <circle cx="24" cy="42" r="2.5" fill="#3b2b20"/>
+    <circle cx="40" cy="42" r="2.5" fill="#3b2b20"/>
+    <circle cx="32" cy="48" r="3" fill="#3b2b20"/>
+  </svg>`,
+  owl: `<svg viewBox="0 0 64 64">
+    <ellipse cx="32" cy="36" rx="20" ry="23" fill="#a98f6f"/>
+    <polygon points="16,16 22,24 12,24" fill="#a98f6f"/>
+    <polygon points="48,16 42,24 52,24" fill="#a98f6f"/>
+    <circle cx="24" cy="30" r="8" fill="#fdf3e3"/>
+    <circle cx="40" cy="30" r="8" fill="#fdf3e3"/>
+    <circle cx="24" cy="30" r="3.5" fill="#3b2b20"/>
+    <circle cx="40" cy="30" r="3.5" fill="#3b2b20"/>
+    <polygon points="32,36 28,42 36,42" fill="#f0c75e"/>
+    <ellipse cx="32" cy="50" rx="11" ry="8" fill="#c9b491"/>
+  </svg>`,
+  deer: `<svg viewBox="0 0 64 64">
+    <path d="M18 16 Q12 6 8 8 M18 16 Q20 8 14 4" stroke="#8a6a4f" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M46 16 Q52 6 56 8 M46 16 Q44 8 50 4" stroke="#8a6a4f" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="32" cy="38" rx="18" ry="20" fill="#c9a87f"/>
+    <circle cx="25" cy="34" r="3" fill="#3b2b20"/>
+    <circle cx="39" cy="34" r="3" fill="#3b2b20"/>
+    <ellipse cx="32" cy="46" rx="5" ry="4" fill="#3b2b20"/>
+    <circle cx="22" cy="44" r="2" fill="#fff" opacity=".8"/>
+    <circle cx="42" cy="44" r="2" fill="#fff" opacity=".8"/>
+  </svg>`,
+  squirrel: `<svg viewBox="0 0 64 64">
+    <path d="M44 50 Q62 44 56 24 Q52 8 40 14 Q48 22 44 34 Z" fill="#b06f3e"/>
+    <circle cx="26" cy="38" r="17" fill="#c98a52"/>
+    <polygon points="16,24 20,12 26,22" fill="#b06f3e"/>
+    <circle cx="21" cy="35" r="3" fill="#3b2b20"/>
+    <circle cx="33" cy="35" r="3" fill="#3b2b20"/>
+    <circle cx="27" cy="44" r="3" fill="#3b2b20"/>
+  </svg>`,
+};
+
+const FAIRY_SVG = `<svg viewBox="0 0 90 100">
+  <ellipse cx="28" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(-25 28 42)"/>
+  <ellipse cx="62" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(25 62 42)"/>
+  <polygon points="45,42 28,84 62,84" fill="#b487c8"/>
+  <circle cx="45" cy="30" r="13" fill="#ffd9b8"/>
+  <path d="M32 28 Q34 12 45 14 Q58 12 58 28 Q52 20 45 21 Q38 20 32 28" fill="#8a5a3b"/>
+  <circle cx="40" cy="30" r="2" fill="#3b2b20"/>
+  <circle cx="50" cy="30" r="2" fill="#3b2b20"/>
+  <path d="M41 36 Q45 39 49 36" stroke="#3b2b20" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <line x1="62" y1="60" x2="78" y2="44" stroke="#8a5a3b" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="80" cy="42" r="5" fill="#ffe08a"/>
+</svg>`;
+
+/* ============================ persistence ============================ */
+
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* corrupted save — start fresh */ }
+  return { highestUnlockedLevel: 1, bestResults: {}, menagerie: [], totalGems: 0 };
+}
+let save = loadSave();
+function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(save)); }
+
+/* =============================== audio ============================== */
+
+let audioCtx = null;
+function tone(freq, dur, type = "sine", vol = 0.12, when = 0) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime + when;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + dur);
+  } catch (e) { /* audio unavailable — play silently */ }
+}
+const sfx = {
+  key:      () => tone(880, .08, "sine", .06),
+  wrong:    () => tone(180, .15, "triangle", .08),
+  collect:  () => { tone(660, .12); tone(880, .12, "sine", .12, .09); tone(1100, .2, "sine", .12, .18); },
+  reward:   () => { [880, 1100, 1320, 1760].forEach((f, i) => tone(f, .18, "sine", .1, i * .1)); },
+  complete: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, .3, "sine", .12, i * .15)); },
+};
+
+/* ============================ screen flow ============================ */
+
+const $ = (id) => document.getElementById(id);
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  $(id).classList.add("active");
+}
+
+function renderTitle() {
+  const row = $("levelRow");
+  row.innerHTML = "";
+  LEVELS.forEach((_, i) => {
+    const n = i + 1;
+    const btn = document.createElement("button");
+    btn.className = "big";
+    const best = save.bestResults[n];
+    btn.innerHTML = `Level ${n}` +
+      (best ? `<span class="best-note">best: ${best.missed} missed</span>` : "");
+    btn.disabled = n > save.highestUnlockedLevel;
+    btn.addEventListener("click", () => startLevel(n));
+    row.appendChild(btn);
+  });
+}
+
+function renderMenagerie() {
+  const grid = $("menagerieGrid");
+  grid.innerHTML = "";
+  if (save.menagerie.length === 0) {
+    grid.innerHTML = `<p class="empty-note">No animals yet — collect gems and friends will find you! 🌿</p>`;
+    return;
+  }
+  save.menagerie.forEach(kind => {
+    const pet = document.createElement("div");
+    pet.className = "pet";
+    pet.innerHTML = `${ANIMAL_SVGS[kind]}<div>${ANIMAL_NAMES[kind]}</div>`;
+    grid.appendChild(pet);
+  });
+}
+
+/* ============================= game state ============================ */
+
+const game = {
+  running: false,
+  levelNum: 1,
+  level: null,
+  collected: 0,
+  missed: 0,
+  greenCount: 0,
+  gems: [],           // active gem objects
+  target: null,       // gem currently being typed
+  newAnimals: [],     // animals earned this level
+  nextGemId: 1,
+  rafId: null,
+  fairyStep: 0,
+};
+
+function startLevel(n) {
+  game.levelNum = n;
+  game.level = LEVELS[n - 1];
+  game.collected = 0;
+  game.missed = 0;
+  game.greenCount = 0;
+  game.gems = [];
+  game.target = null;
+  game.newAnimals = [];
+  game.fairyStep = 0;
+  game.running = true;
+
+  $("playArea").innerHTML = "";
+  $("rewardToast").className = "";
+  $("completeOverlay").classList.remove("active");
+  $("levelPill").textContent = `Level ${n}`;
+  const ch = game.level.challenge;
+  $("challengePill").style.display = ch ? "" : "none";
+  if (ch) updateChallengePill();
+  buildBag();
+  updateHud();
+  placeFairy();
+  showScreen("gameScreen");
+
+  for (let i = 0; i < game.level.maxOnScreen; i++) spawnGem(i * 400);
+  if (game.rafId) cancelAnimationFrame(game.rafId);
+  game.rafId = requestAnimationFrame(tick);
+}
+
+function stopLevel() {
+  game.running = false;
+  if (game.rafId) cancelAnimationFrame(game.rafId);
+  game.rafId = null;
+}
+
+/* ------------------------------ fairy ------------------------------ */
+
+function placeFairy() {
+  let fairy = $("fairy");
+  if (!fairy) {
+    fairy = document.createElement("div");
+    fairy.id = "fairy";
+    fairy.innerHTML = FAIRY_SVG;
+    $("playArea").appendChild(fairy);
+  }
+  fairy.style.left = "6%";
+  fairy.style.top = "22%";
+  setInterval(() => {
+    if (!game.running) return;
+    const f = $("fairy");
+    if (!f) return;
+    const s = document.createElement("div");
+    s.className = "sparkle";
+    s.style.left = (f.offsetLeft + 10 + Math.random() * 30) + "px";
+    s.style.top = (f.offsetTop + 50 + Math.random() * 30) + "px";
+    $("playArea").appendChild(s);
+    setTimeout(() => s.remove(), 900);
+  }, 450);
+}
+
+function fairyStepForward() {
+  // fairy nudges right a little each gem; hills slide left for a sense of travel
+  game.fairyStep++;
+  const fairy = $("fairy");
+  const pct = 6 + Math.min(game.fairyStep, 10) * 1.5;
+  fairy.style.left = pct + "%";
+  $("hills").style.transform = `translateX(${-game.fairyStep * 24}px)`;
+}
+
+/* ------------------------------- gems ------------------------------- */
+
+function pickWord() {
+  const inUse = game.gems.map(g => g.word);
+  const usedFirst = game.gems.map(g => g.word[0]);
+  const pool = game.level.words.filter(w =>
+    !inUse.includes(w) && !usedFirst.includes(w[0]) // distinct first letters for targeting
+  );
+  const list = pool.length ? pool : game.level.words.filter(w => !inUse.includes(w));
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function pickColor() {
+  const names = Object.keys(GEM_COLORS);
+  const ch = game.level.challenge;
+  if (ch && Math.random() < 0.4) return ch.color;
+  return names[Math.floor(Math.random() * names.length)];
+}
+
+function spawnGem(delay = 0) {
+  setTimeout(() => {
+    if (!game.running) return;
+    const word = pickWord();
+    const color = pickColor();
+    const id = game.nextGemId++;
+
+    const slotCount = game.level.maxOnScreen;
+    const slot = findFreeSlot();
+    const leftPct = slotCount === 1 ? 55 : 42 + slot * 26;
+    const topPct = 18 + Math.random() * 22;
+
+    const el = document.createElement("div");
+    el.className = "gem";
+    el.style.left = leftPct + "%";
+    el.style.top = topPct + "%";
+    const r = 36, circ = 2 * Math.PI * r;
+    el.innerHTML = `
+      <svg class="timer-ring" viewBox="0 0 76 76">
+        <circle class="track" cx="38" cy="38" r="${r}"/>
+        <circle class="left" cx="38" cy="38" r="${r}" stroke-dasharray="${circ}" stroke-dashoffset="0"/>
+      </svg>
+      ${gemSVG(color)}
+      <div class="word"></div>`;
+    $("playArea").appendChild(el);
+
+    const gem = { id, word, color, typed: 0, el, slot,
+                  born: performance.now(), life: game.level.timePerGem, ringCirc: circ };
+    game.gems.push(gem);
+    renderGemWord(gem);
+  }, delay);
+}
+
+function findFreeSlot() {
+  const used = game.gems.map(g => g.slot);
+  for (let i = 0; i < game.level.maxOnScreen; i++) if (!used.includes(i)) return i;
+  return 0;
+}
+
+function renderGemWord(gem) {
+  const wordEl = gem.el.querySelector(".word");
+  wordEl.innerHTML = gem.word.split("").map((ch, i) =>
+    `<span class="${i < gem.typed ? "done" : ""}">${ch}</span>`).join("");
+  gem.el.classList.toggle("target", game.target === gem);
+}
+
+function tick(now) {
+  if (!game.running) return;
+  for (const gem of [...game.gems]) {
+    const elapsed = now - gem.born;
+    const frac = Math.min(elapsed / gem.life, 1);
+    const ring = gem.el.querySelector("circle.left");
+    if (ring) ring.style.strokeDashoffset = (gem.ringCirc * frac).toFixed(1);
+    if (frac >= 1) missGem(gem);
+  }
+  game.rafId = requestAnimationFrame(tick);
+}
+
+function removeGem(gem) {
+  game.gems = game.gems.filter(g => g !== gem);
+  if (game.target === gem) game.target = null;
+}
+
+function missGem(gem) {
+  removeGem(gem);
+  gem.el.classList.add("missed");
+  gem.el.style.top = "110%";
+  setTimeout(() => gem.el.remove(), 950);
+  game.missed++;
+  if (!levelGoalsMet()) spawnGem(700);
+}
+
+function collectGem(gem) {
+  removeGem(gem);
+  sfx.collect();
+  game.collected++;
+  if (gem.color === "green") game.greenCount++;
+  save.totalGems++;
+
+  // fly into the bag
+  const bagRect = $("bag").getBoundingClientRect();
+  gem.el.classList.add("collected");
+  gem.el.style.left = (bagRect.left + bagRect.width / 2 - 55) + "px";
+  gem.el.style.top = (bagRect.top - 30) + "px";
+  gem.el.style.transform = "scale(.35)";
+  gem.el.querySelector(".word").style.opacity = "0";
+  setTimeout(() => gem.el.remove(), 700);
+
+  fairyStepForward();
+  fillBagSlot(game.collected, gem.color);
+  updateHud();
+  if (game.level.challenge) updateChallengePill();
+
+  // chance of an animal friend
+  if (Math.random() < REWARD_CHANCE) {
+    const kind = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+    game.newAnimals.push(kind);
+    save.menagerie.push(kind);
+    showRewardToast(kind);
+    sfx.reward();
+  }
+  persist();
+
+  if (levelGoalsMet()) {
+    stopLevel();
+    setTimeout(finishLevel, 1100);
+  } else {
+    spawnGem(500);
+  }
+}
+
+function levelGoalsMet() {
+  const ch = game.level.challenge;
+  return game.collected >= game.level.gemTarget &&
+         (!ch || game.greenCount >= ch.count);
+}
+
+/* ------------------------------ bag/hud ----------------------------- */
+
+function buildBag() {
+  const bag = $("bag");
+  bag.innerHTML = "🎒";
+  for (let i = 0; i < game.level.gemTarget; i++) {
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.dataset.n = i + 1;
+    bag.appendChild(slot);
+  }
+}
+
+function fillBagSlot(n, color) {
+  const slot = $("bag").querySelector(`.slot[data-n="${n}"]`);
+  if (slot) slot.innerHTML = gemSVG(color);
+}
+
+function updateHud() {
+  $("gemPill").textContent = `Gems ${game.collected} / ${game.level.gemTarget}`;
+}
+
+function updateChallengePill() {
+  const ch = game.level.challenge;
+  $("challengePill").textContent =
+    `💚 Green gems ${Math.min(game.greenCount, ch.count)} / ${ch.count}`;
+}
+
+function showRewardToast(kind) {
+  const toast = $("rewardToast");
+  toast.innerHTML = `${ANIMAL_SVGS[kind]}<div class="msg">A ${ANIMAL_NAMES[kind].toLowerCase()} joined your crew!</div>`;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+/* --------------------------- level complete ------------------------- */
+
+function finishLevel() {
+  sfx.complete();
+  const n = game.levelNum;
+  // unlock next level and keep the best (fewest-missed) result
+  save.highestUnlockedLevel = Math.max(save.highestUnlockedLevel, Math.min(n + 1, LEVELS.length));
+  const prev = save.bestResults[n];
+  if (!prev || game.missed < prev.missed) {
+    save.bestResults[n] = { gems: game.collected, missed: game.missed };
+  }
+  persist();
+
+  $("completeStats").innerHTML =
+    `💎 Gems collected: <b>${game.collected}</b><br>` +
+    `🍂 Gems that slipped away: <b>${game.missed}</b>` +
+    (game.level.challenge ? `<br>💚 Green gems: <b>${game.greenCount}</b>` : "");
+  $("completeAnimals").innerHTML = game.newAnimals.length
+    ? `New friends! ${game.newAnimals.map(k => ANIMAL_SVGS[k]).join("")}`
+    : "";
+  $("nextBtn").style.display = n < LEVELS.length ? "" : "none";
+  $("completeOverlay").classList.add("active");
+}
+
+/* ============================== typing ============================== */
+
+window.addEventListener("keydown", (e) => {
+  if (!game.running) return;
+  if (e.key.length !== 1 || !/[a-z]/i.test(e.key)) return;
+  const letter = e.key.toLowerCase();
+
+  if (game.target) {
+    tryLetter(game.target, letter);
+    return;
+  }
+  // no target yet — first letter picks a gem
+  const match = game.gems.find(g => g.word[0] === letter);
+  if (match) {
+    game.target = match;
+    tryLetter(match, letter);
+    game.gems.forEach(renderGemWord);
+  } else {
+    sfx.wrong();
+    game.gems.forEach(g => wiggle(g));
+  }
+});
+
+function tryLetter(gem, letter) {
+  if (gem.word[gem.typed] === letter) {
+    gem.typed++;
+    sfx.key();
+    renderGemWord(gem);
+    if (gem.typed === gem.word.length) collectGem(gem);
+  } else {
+    sfx.wrong();
+    wiggle(gem); // no progress lost — gentle nudge only
+  }
+}
+
+function wiggle(gem) {
+  gem.el.classList.remove("wiggle");
+  void gem.el.offsetWidth; // restart animation
+  gem.el.classList.add("wiggle");
+}
+
+/* ============================== wiring ============================== */
+
+$("playBtn").addEventListener("click", () =>
+  startLevel(Math.min(save.highestUnlockedLevel, LEVELS.length)));
+$("menagerieBtn").addEventListener("click", () => {
+  renderMenagerie();
+  showScreen("menagerieScreen");
+});
+$("menagerieBackBtn").addEventListener("click", () => {
+  renderTitle();
+  showScreen("titleScreen");
+});
+$("quitBtn").addEventListener("click", () => {
+  stopLevel();
+  renderTitle();
+  showScreen("titleScreen");
+});
+$("replayBtn").addEventListener("click", () => startLevel(game.levelNum));
+$("nextBtn").addEventListener("click", () => startLevel(game.levelNum + 1));
+$("menuBtn").addEventListener("click", () => {
+  $("completeOverlay").classList.remove("active");
+  renderTitle();
+  showScreen("titleScreen");
+});
+
+renderTitle();
+</script>
+</body>
+</html>
