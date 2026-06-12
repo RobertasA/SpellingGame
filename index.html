@@ -6,10 +6,12 @@
 <title>Gem Fairy — Spelling Game</title>
 <style>
   :root {
-    --sky-top: #cfe8f7;
-    --sky-bottom: #fdf3e3;
-    --hill-far: #cdeac0;
-    --hill-near: #a8d5a2;
+    --sky-top: #bfe3d8;
+    --sky-bottom: #f4eecf;
+    --canopy-far: #aacfa0;
+    --canopy-near: #7db877;
+    --trunk: #8a6a4f;
+    --floor: #8fc183;
     --ink: #5b4a68;
     --accent: #b487c8;
     --gold: #f0c75e;
@@ -37,7 +39,7 @@
     background-repeat: repeat-x;
     background-size: auto 100%;
     image-rendering: pixelated;
-    transition: background-position-x .6s ease;
+    transition: background-position-x .8s ease;
   }
   #layerClouds    { background-image: url("assets/backgrounds/clouds.png"); animation: skyDrift 120s linear infinite; }
   #layerMountains { background-image: url("assets/backgrounds/mountains.png"); }
@@ -46,6 +48,22 @@
 
   /* pixel-art sprites scale crisply */
   img.pixel { image-rendering: pixelated; }
+
+  /* invisible strip along the forest floor that carries the sprouts */
+  .ground {
+    position: absolute; left: 0; bottom: 0; width: 260vw; height: 13%;
+    transition: transform .8s ease;
+  }
+  .ground .sprout { position: absolute; bottom: 55%; font-size: 20px; }
+  .firefly {
+    position: absolute; width: 6px; height: 6px; border-radius: 50%;
+    background: #fff7c4; box-shadow: 0 0 10px 4px rgba(255,240,160,.8);
+    animation: glow 3.2s ease-in-out infinite;
+  }
+  @keyframes glow {
+    0%,100% { opacity: .15; transform: translateY(0); }
+    50%     { opacity: .9;  transform: translateY(-14px); }
+  }
 
   /* ---------- title screen ---------- */
   h1.title {
@@ -101,24 +119,44 @@
   }
   @keyframes bob { 0%,100% { margin-top: 0; } 50% { margin-top: -14px; } }
   .sparkle {
-    position: absolute; width: 7px; height: 7px; border-radius: 50%;
+    position: absolute; width: 7px; height: 7px; border-radius: 50%; z-index: 6;
     background: #fff; box-shadow: 0 0 8px 3px rgba(255,230,150,.9);
     pointer-events: none; animation: sparkleFade .9s forwards;
   }
   @keyframes sparkleFade { to { opacity: 0; transform: translateY(18px) scale(.3); } }
 
-  /* gems */
+  /* gems — hidden in the forest, discovered by the fairy */
   .gem {
     position: absolute; width: 110px; text-align: center; z-index: 3;
     transition: opacity .3s;
   }
-  .gem img.stone { width: 60px; height: 60px; display: block; margin: 0 auto; image-rendering: pixelated; }
+  .gem .nest { position: relative; width: 110px; height: 104px; margin: 0 auto; }
+  .gem img.stone {
+    width: 60px; height: 60px; display: block; image-rendering: pixelated;
+    position: absolute; left: 25px; bottom: 26px;
+    transform: translateY(42px) scale(.4); opacity: 0;
+    transition: transform .7s cubic-bezier(.34,1.45,.5,1), opacity .45s;
+  }
+  .gem.revealed img.stone { transform: translateY(0) scale(1); opacity: 1; }
+  .gem .spot {
+    position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
+    width: 100px; z-index: 2;
+  }
+  .gem .spot svg { display: block; width: 100%; }
+  .gem .spot.rustle { animation: rustle .5s; }
+  @keyframes rustle {
+    20% { transform: translateX(-50%) rotate(-4deg); }
+    50% { transform: translateX(-50%) rotate(4deg); }
+    80% { transform: translateX(-50%) rotate(-2deg); }
+  }
   .gem .word {
-    margin-top: 4px; display: inline-block;
+    margin-top: 2px; display: inline-block;
     background: rgba(255,255,255,.9); border-radius: 14px;
     padding: 4px 14px; font-size: 1.5rem; letter-spacing: 3px;
     box-shadow: 0 2px 0 rgba(0,0,0,.1);
+    opacity: 0; transition: opacity .4s;
   }
+  .gem.revealed .word { opacity: 1; }
   .gem .word .done { color: var(--accent); font-weight: bold; }
   .gem.target .word { outline: 3px solid var(--accent); }
   .gem.wiggle { animation: wiggle .3s; }
@@ -127,8 +165,15 @@
     75% { transform: translateX(6px) rotate(3deg); }
   }
   .gem.collected { transition: all .65s cubic-bezier(.5,-0.3,.7,1); opacity: .9; }
-  .gem.missed { transition: all .9s ease-in; opacity: 0; }
-  .timer-ring { position: absolute; top: -6px; left: 17px; width: 76px; height: 76px; }
+  .gem.collected .spot { opacity: 0; transition: opacity .3s; }
+  .gem.missed img.stone { transform: translateY(42px) scale(.4); opacity: 0; }
+  .gem.missed .word, .gem.missed .timer-ring { opacity: 0; }
+  .gem.missed { transition: opacity .6s ease .7s; opacity: 0; }
+  .timer-ring {
+    position: absolute; top: 10px; left: 17px; width: 76px; height: 76px;
+    z-index: 3; opacity: 0; transition: opacity .4s;
+  }
+  .gem.revealed .timer-ring { opacity: 1; }
   .timer-ring circle.track { fill: none; stroke: rgba(255,255,255,.6); stroke-width: 4; }
   .timer-ring circle.left  { fill: none; stroke: var(--gold); stroke-width: 4; stroke-linecap: round;
                              transform: rotate(-90deg); transform-origin: center; }
@@ -193,6 +238,11 @@
   <div class="layer" id="layerClouds"></div>
   <div class="layer" id="layerMountains"></div>
   <div class="layer" id="layerTrees"></div>
+  <div class="ground" id="ground"></div>
+  <div class="firefly" style="left:18%; top:48%; animation-delay:-1s;"></div>
+  <div class="firefly" style="left:46%; top:40%; animation-delay:-2.2s;"></div>
+  <div class="firefly" style="left:72%; top:52%;"></div>
+  <div class="firefly" style="left:88%; top:38%; animation-delay:-1.6s;"></div>
 </div>
 
 <button id="muteBtn" title="Toggle music & sound">🔊</button>
@@ -200,7 +250,7 @@
 <!-- title screen -->
 <div class="screen active" id="titleScreen">
   <h1 class="title">✨ Gem Fairy ✨</h1>
-  <p class="subtitle">Type the words to collect falling gems!</p>
+  <p class="subtitle">Type the words to discover gems hidden in the forest!</p>
   <div class="menu-buttons">
     <button class="big primary" id="playBtn">Play</button>
     <div class="level-row" id="levelRow"></div>
@@ -288,6 +338,31 @@ function animalImg(kind) {
   return `<img class="pixel" src="assets/sprites/animals/${kind}.png" alt="${ANIMAL_NAMES[kind]}">`;
 }
 
+/* hiding spots the gems are tucked into */
+const SPOT_SVGS = {
+  bush: `<svg viewBox="0 0 100 46">
+    <circle cx="24" cy="32" r="20" fill="#6fb474"/>
+    <circle cx="50" cy="26" r="24" fill="#7dc282"/>
+    <circle cx="78" cy="32" r="18" fill="#6fb474"/>
+    <circle cx="38" cy="20" r="4" fill="#e9a0b4"/>
+    <circle cx="64" cy="24" r="4" fill="#f0c75e"/>
+  </svg>`,
+  stump: `<svg viewBox="0 0 100 46">
+    <rect x="26" y="14" width="48" height="28" rx="6" fill="#8a6a4f"/>
+    <ellipse cx="50" cy="14" rx="24" ry="9" fill="#c9a87f"/>
+    <ellipse cx="50" cy="14" rx="14" ry="5" fill="#b08d63"/>
+    <path d="M12 42 Q16 26 22 42 M84 42 Q88 28 94 42" fill="#6fb474"/>
+  </svg>`,
+  ferns: `<svg viewBox="0 0 100 46">
+    <path d="M20 46 Q14 18 4 14 M20 46 Q22 16 12 6 M20 46 Q30 20 36 16"
+          stroke="#5e9c63" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M78 46 Q72 22 64 18 M78 46 Q82 18 90 8 M78 46 Q90 24 96 20"
+          stroke="#6fb474" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="50" cy="42" rx="22" ry="7" fill="#7dc282"/>
+  </svg>`,
+};
+const SPOT_KINDS = Object.keys(SPOT_SVGS);
+
 /* ============================ persistence ============================ */
 
 function loadSave() {
@@ -350,6 +425,22 @@ const $ = (id) => document.getElementById(id);
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(id).classList.add("active");
+}
+
+/* ============================== forest ============================== */
+
+function buildForest() {
+  // trees come from the pixel-art background layers; only sprinkle sprouts on the floor
+  const ground = $("ground");
+  ground.innerHTML = "";
+  const sprouts = ["🌼", "🍄", "🌷", "🌿", "🌼", "🍄"];
+  for (let i = 0; i < 26; i++) {
+    const s = document.createElement("div");
+    s.className = "sprout";
+    s.style.left = (i / 26 * 250 + Math.random() * 6) + "vw";
+    s.textContent = sprouts[Math.floor(Math.random() * sprouts.length)];
+    ground.appendChild(s);
+  }
 }
 
 function renderTitle() {
@@ -461,12 +552,14 @@ function placeFairy() {
 }
 
 function fairyStepForward() {
-  // fairy nudges right a little each gem; the treeline slides left for a sense of travel
+  // fairy nudges right a little each gem; the forest slides past in parallax
   game.fairyStep++;
   const fairy = $("fairy");
   const pct = 6 + Math.min(game.fairyStep, 10) * 1.5;
   fairy.style.left = pct + "%";
-  $("layerTrees").style.backgroundPositionX = `${-game.fairyStep * 24}px`;
+  $("layerMountains").style.backgroundPositionX = `${-game.fairyStep * 10}px`;
+  $("layerTrees").style.backgroundPositionX      = `${-game.fairyStep * 26}px`;
+  $("ground").style.transform = `translateX(${-game.fairyStep * 34}px)`;
 }
 
 /* ------------------------------- gems ------------------------------- */
@@ -494,31 +587,64 @@ function spawnGem(delay = 0) {
     const word = pickWord();
     const color = pickColor();
     const id = game.nextGemId++;
+    const spotKind = SPOT_KINDS[Math.floor(Math.random() * SPOT_KINDS.length)];
 
     const slotCount = game.level.maxOnScreen;
     const slot = findFreeSlot();
     const leftPct = slotCount === 1 ? 55 : 42 + slot * 26;
-    const topPct = 18 + Math.random() * 22;
+    const bottomPct = 13 + Math.random() * 9; // nestled on the forest floor
 
     const el = document.createElement("div");
     el.className = "gem";
     el.style.left = leftPct + "%";
-    el.style.top = topPct + "%";
+    el.style.bottom = bottomPct + "%";
     const r = 36, circ = 2 * Math.PI * r;
     el.innerHTML = `
-      <svg class="timer-ring" viewBox="0 0 76 76">
-        <circle class="track" cx="38" cy="38" r="${r}"/>
-        <circle class="left" cx="38" cy="38" r="${r}" stroke-dasharray="${circ}" stroke-dashoffset="0"/>
-      </svg>
-      ${gemImg(color)}
+      <div class="nest">
+        <svg class="timer-ring" viewBox="0 0 76 76">
+          <circle class="track" cx="38" cy="38" r="${r}"/>
+          <circle class="left" cx="38" cy="38" r="${r}" stroke-dasharray="${circ}" stroke-dashoffset="0"/>
+        </svg>
+        ${gemImg(color)}
+        <div class="spot">${SPOT_SVGS[spotKind]}</div>
+      </div>
       <div class="word"></div>`;
     $("playArea").appendChild(el);
 
-    const gem = { id, word, color, typed: 0, el, slot,
-                  born: performance.now(), life: game.level.timePerGem, ringCirc: circ };
+    const gem = { id, word, color, typed: 0, el, slot, revealed: false,
+                  born: 0, life: game.level.timePerGem, ringCirc: circ };
     game.gems.push(gem);
     renderGemWord(gem);
+
+    // a moment later the hiding spot rustles and the fairy discovers the gem
+    setTimeout(() => {
+      if (!game.running || !game.gems.includes(gem)) return;
+      rustleSpot(gem);
+      gem.el.classList.add("revealed");
+      discoverySparkles(gem.el);
+      gem.revealed = true;
+      gem.born = performance.now();
+    }, 550);
   }, delay);
+}
+
+function rustleSpot(gem) {
+  const spot = gem.el.querySelector(".spot");
+  spot.classList.remove("rustle");
+  void spot.offsetWidth; // restart animation
+  spot.classList.add("rustle");
+}
+
+function discoverySparkles(gemEl) {
+  for (let i = 0; i < 7; i++) {
+    const s = document.createElement("div");
+    s.className = "sparkle";
+    s.style.left = (gemEl.offsetLeft + 25 + Math.random() * 60) + "px";
+    s.style.top = (gemEl.offsetTop + 10 + Math.random() * 70) + "px";
+    s.style.animationDelay = (Math.random() * .25) + "s";
+    $("playArea").appendChild(s);
+    setTimeout(() => s.remove(), 1300);
+  }
 }
 
 function findFreeSlot() {
@@ -537,6 +663,7 @@ function renderGemWord(gem) {
 function tick(now) {
   if (!game.running) return;
   for (const gem of [...game.gems]) {
+    if (!gem.revealed) continue;
     const elapsed = now - gem.born;
     const frac = Math.min(elapsed / gem.life, 1);
     const ring = gem.el.querySelector("circle.left");
@@ -553,9 +680,11 @@ function removeGem(gem) {
 
 function missGem(gem) {
   removeGem(gem);
+  // the gem slips back into its hiding spot
+  rustleSpot(gem);
+  gem.el.classList.remove("revealed");
   gem.el.classList.add("missed");
-  gem.el.style.top = "110%";
-  setTimeout(() => gem.el.remove(), 950);
+  setTimeout(() => gem.el.remove(), 1400);
   game.missed++;
   if (!levelGoalsMet()) spawnGem(700);
 }
@@ -570,6 +699,9 @@ function collectGem(gem) {
   // fly into the bag
   const bagRect = $("bag").getBoundingClientRect();
   gem.el.classList.add("collected");
+  gem.el.style.top = gem.el.offsetTop + "px";
+  gem.el.style.bottom = "auto";
+  void gem.el.offsetWidth; // settle position before the flight transition
   gem.el.style.left = (bagRect.left + bagRect.width / 2 - 55) + "px";
   gem.el.style.top = (bagRect.top - 30) + "px";
   gem.el.style.transform = "scale(.35)";
@@ -655,7 +787,7 @@ function finishLevel() {
 
   $("completeStats").innerHTML =
     `💎 Gems collected: <b>${game.collected}</b><br>` +
-    `🍂 Gems that slipped away: <b>${game.missed}</b>` +
+    `🍂 Gems that stayed hidden: <b>${game.missed}</b>` +
     (game.level.challenge ? `<br>💚 Green gems: <b>${game.greenCount}</b>` : "");
   $("completeAnimals").innerHTML = game.newAnimals.length
     ? `New friends! ${game.newAnimals.map(k => animalImg(k)).join("")}`
@@ -676,7 +808,7 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   // no target yet — first letter picks a gem
-  const match = game.gems.find(g => g.word[0] === letter);
+  const match = game.gems.find(g => g.revealed && g.word[0] === letter);
   if (match) {
     game.target = match;
     tryLetter(match, letter);
@@ -737,6 +869,7 @@ $("muteBtn").textContent = muted ? "🔇" : "🔊";
 window.addEventListener("pointerdown", startMusic);
 window.addEventListener("keydown", startMusic);
 
+buildForest();
 renderTitle();
 </script>
 </body>
