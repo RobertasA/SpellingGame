@@ -7,7 +7,8 @@ so no attribution is legally required — credits below are given with thanks.
 
 | Asset | Files | Source | Author | License |
 |---|---|---|---|---|
-| Fairy (player) & woodland animals (fox, rabbit, hedgehog, owl, deer, squirrel) | `assets/sprites/fairy.png`, `assets/sprites/animals/*.png` | [Tiny Creatures](https://opengameart.org/content/tiny-creatures) (expansion to Kenney's Tiny Dungeon, made with Kenney's permission) | Clint Bellanger | CC0 1.0 |
+| Fairy (player) | `assets/sprites/fairy.png` | [Tiny Creatures](https://opengameart.org/content/tiny-creatures) (expansion to Kenney's Tiny Dungeon, made with Kenney's permission) | Clint Bellanger | CC0 1.0 |
+| Animated woodland animals (fox, rabbit, deer, bear, boar, wolf) | `assets/sprites/animals/*.png` | [Animated Wild Animals](https://opengameart.org/content/animated-wild-animals) | scratchio | CC0 1.0 |
 | Gem sprites (pink, blue, gold, green) | `assets/sprites/gems/*.png` | [GEMS!!!](https://opengameart.org/content/gems-2) | Winternaut | CC0 1.0 |
 | Forest background layers (clouds/sky, mountains, treeline) | `assets/backgrounds/*.png` | [SunnyLand Woods](https://opengameart.org/content/sunnyland-woods) | Ansimuz | CC0 1.0 |
 
@@ -22,6 +23,7 @@ so no attribution is legally required — credits below are given with thanks.
 ## License verification notes
 
 - **Tiny Creatures** — OpenGameArt page lists CC0; the pack's bundled `License.txt` confirms CC0 1.0 Universal.
+- **Animated Wild Animals** — OpenGameArt page lists CC0. Idle sheets are used (Wolf uses its Howl animation, as it has no idle).
 - **GEMS!!! by Winternaut** — OpenGameArt page lists CC0.
 - **SunnyLand Woods** — OpenGameArt page lists CC0. Only the art layers are used; the demo's bundled music was *not* used since its licensing is not clearly stated.
 - **Cozy Puzzle In-Game 1** — OpenGameArt page lists CC0; track is marked loopable by the author.

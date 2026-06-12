@@ -48,6 +48,10 @@
 
   /* pixel-art sprites scale crisply */
   img.pixel { image-rendering: pixelated; }
+  .animal-sprite {
+    display: inline-block; vertical-align: bottom;
+    image-rendering: pixelated; background-repeat: no-repeat;
+  }
 
   /* invisible strip along the forest floor that carries the sprouts */
   .ground {
@@ -199,7 +203,6 @@
     transition: transform .35s cubic-bezier(.2,1.6,.4,1);
   }
   #rewardToast.show { transform: translateX(-50%) scale(1); }
-  #rewardToast img { width: 80px; height: 80px; image-rendering: pixelated; }
   #rewardToast .msg { font-size: 1.15rem; margin-top: 6px; }
 
   /* ---------- overlays (level complete) ---------- */
@@ -216,7 +219,7 @@
   .card h2 { color: var(--accent); font-size: 2rem; margin-bottom: .5em; }
   .card .stats { font-size: 1.1rem; margin-bottom: 1em; line-height: 1.7; }
   .card .new-animals { margin-bottom: 1em; }
-  .card .new-animals img { width: 56px; height: 56px; margin: 0 4px; image-rendering: pixelated; }
+  .card .new-animals .animal-sprite { margin: 0 6px; }
   .card .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
   /* ---------- menagerie ---------- */
@@ -227,7 +230,7 @@
   }
   #menagerieGrid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
   #menagerieGrid .pet { text-align: center; font-size: .8rem; }
-  #menagerieGrid .pet img { width: 64px; height: 64px; display: block; image-rendering: pixelated; }
+  #menagerieGrid .pet .animal-sprite { display: block; margin: 0 auto 4px; }
   .empty-note { opacity: .7; font-style: italic; }
 </style>
 </head>
@@ -319,10 +322,19 @@ const LEVELS = [
 
 const GEM_COLOR_NAMES = ["pink", "blue", "gold", "green"];
 
-const ANIMALS = ["fox","rabbit","hedgehog","owl","deer","squirrel"];
+const ANIMALS = ["fox", "rabbit", "deer", "bear", "boar", "wolf"];
 const ANIMAL_NAMES = {
-  fox: "Fox", rabbit: "Rabbit", hedgehog: "Hedgehog",
-  owl: "Owl", deer: "Deer", squirrel: "Squirrel",
+  fox: "Fox", rabbit: "Rabbit", deer: "Deer",
+  bear: "Bear", boar: "Boar", wolf: "Wolf",
+};
+/* idle sprite sheets: frame size and count (Animated Wild Animals, CC0) */
+const ANIMAL_SPRITES = {
+  fox:    { frames: 6,  w: 64, h: 36 },
+  rabbit: { frames: 10, w: 32, h: 26 },
+  deer:   { frames: 10, w: 72, h: 52 },
+  bear:   { frames: 12, w: 64, h: 33 },
+  boar:   { frames: 8,  w: 64, h: 40 },
+  wolf:   { frames: 16, w: 40, h: 40 },
 };
 const REWARD_CHANCE = 0.15;
 const STORAGE_KEY = "gemFairySave";
@@ -335,7 +347,24 @@ function gemImg(color) {
 }
 
 function animalImg(kind) {
-  return `<img class="pixel" src="assets/sprites/animals/${kind}.png" alt="${ANIMAL_NAMES[kind]}">`;
+  return `<span class="animal-sprite animal-${kind}" role="img" aria-label="${ANIMAL_NAMES[kind]}"></span>`;
+}
+
+// build one CSS rule + keyframes per animal so its idle sheet plays as a loop
+function buildAnimalStyles() {
+  const SCALE = 2;
+  let css = "";
+  for (const [kind, sp] of Object.entries(ANIMAL_SPRITES)) {
+    const w = sp.w * SCALE, h = sp.h * SCALE, total = sp.frames * w;
+    css += `.animal-${kind}{width:${w}px;height:${h}px;` +
+           `background-image:url("assets/sprites/animals/${kind}.png");` +
+           `background-size:${total}px ${h}px;` +
+           `animation:anim-${kind} ${(sp.frames * 0.15).toFixed(2)}s steps(${sp.frames}) infinite;}` +
+           `@keyframes anim-${kind}{to{background-position-x:-${total}px;}}`;
+  }
+  const style = document.createElement("style");
+  style.textContent = css;
+  document.head.appendChild(style);
 }
 
 /* hiding spots the gems are tucked into */
@@ -368,7 +397,15 @@ const SPOT_KINDS = Object.keys(SPOT_SVGS);
 function loadSave() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const s = JSON.parse(raw);
+      // remap species from saves made before the animal set changed
+      const legacy = { hedgehog: "boar", owl: "wolf", squirrel: "bear" };
+      s.menagerie = (s.menagerie || [])
+        .map(k => legacy[k] || k)
+        .filter(k => ANIMALS.includes(k));
+      return s;
+    }
   } catch (e) { /* corrupted save — start fresh */ }
   return { highestUnlockedLevel: 1, bestResults: {}, menagerie: [], totalGems: 0 };
 }
@@ -869,6 +906,7 @@ $("muteBtn").textContent = muted ? "🔇" : "🔊";
 window.addEventListener("pointerdown", startMusic);
 window.addEventListener("keydown", startMusic);
 
+buildAnimalStyles();
 buildForest();
 renderTitle();
 </script>
