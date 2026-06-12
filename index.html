@@ -133,9 +133,23 @@
   }
   @keyframes sparkleFade { to { opacity: 0; transform: translateY(18px) scale(.3); } }
 
-  /* gems — hidden in the forest, discovered by the fairy */
+  /* hideouts — permanent hiding spots scattered on the forest floor */
+  .hideout {
+    position: absolute; width: 100px; z-index: 3;
+    transform: translateX(-50%); pointer-events: none;
+  }
+  .hideout svg { display: block; width: 100%; }
+  .hideout.rustle { animation: rustle .5s; }
+  @keyframes rustle {
+    20% { transform: translateX(-50%) rotate(-4deg); }
+    50% { transform: translateX(-50%) rotate(4deg); }
+    80% { transform: translateX(-50%) rotate(-2deg); }
+  }
+
+  /* gems — pop up out of the hideouts, discovered by the fairy */
   .gem {
-    position: absolute; width: 110px; text-align: center; z-index: 3;
+    position: absolute; width: 110px; margin-left: -55px;
+    text-align: center; z-index: 2;
     transition: opacity .3s;
   }
   .gem .nest { position: relative; width: 110px; height: 104px; margin: 0 auto; }
@@ -146,19 +160,8 @@
     transition: transform .7s cubic-bezier(.34,1.45,.5,1), opacity .45s;
   }
   .gem.revealed svg.stone { transform: translateY(0) scale(1); opacity: 1; }
-  .gem .spot {
-    position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
-    width: 100px; z-index: 2;
-  }
-  .gem .spot svg { display: block; width: 100%; }
-  .gem .spot.rustle { animation: rustle .5s; }
-  @keyframes rustle {
-    20% { transform: translateX(-50%) rotate(-4deg); }
-    50% { transform: translateX(-50%) rotate(4deg); }
-    80% { transform: translateX(-50%) rotate(-2deg); }
-  }
   .gem .word {
-    margin-top: 2px; display: inline-block;
+    margin-bottom: 2px; display: inline-block;
     background: rgba(255,255,255,.9); border-radius: 14px;
     padding: 4px 14px; font-size: 1.5rem; letter-spacing: 3px;
     box-shadow: 0 2px 0 rgba(0,0,0,.1);
@@ -172,8 +175,7 @@
     25% { transform: translateX(-6px) rotate(-3deg); }
     75% { transform: translateX(6px) rotate(3deg); }
   }
-  .gem.collected { transition: all .65s cubic-bezier(.5,-0.3,.7,1); opacity: .9; }
-  .gem.collected .spot { opacity: 0; transition: opacity .3s; }
+  .gem.collected { transition: all .65s cubic-bezier(.5,-0.3,.7,1); opacity: .9; z-index: 7; }
   .gem.missed svg.stone { transform: translateY(42px) scale(.4); opacity: 0; }
   .gem.missed .word, .gem.missed .timer-ring { opacity: 0; }
   .gem.missed { transition: opacity .6s ease .7s; opacity: 0; }
@@ -587,6 +589,7 @@ const game = {
   missed: 0,
   greenCount: 0,
   gems: [],           // active gem objects
+  hideouts: [],       // hiding spots scattered on the forest floor
   target: null,       // gem currently being typed
   newAnimals: [],     // animals earned this level
   nextGemId: 1,
@@ -615,6 +618,7 @@ function startLevel(n) {
   if (ch) updateChallengePill();
   buildBag();
   updateHud();
+  buildHideouts();
   placeFairy();
   showScreen("gameScreen");
 
@@ -684,37 +688,55 @@ function pickColor() {
   return names[Math.floor(Math.random() * names.length)];
 }
 
+function buildHideouts() {
+  game.hideouts = [];
+  const count = Math.max(game.level.maxOnScreen + 3, 5);
+  for (let i = 0; i < count; i++) {
+    const leftPct = 14 + (i + 0.5) * (72 / count) + (Math.random() * 6 - 3);
+    const bottomPct = 13 + Math.random() * 8;
+    const kind = SPOT_KINDS[Math.floor(Math.random() * SPOT_KINDS.length)];
+    const el = document.createElement("div");
+    el.className = "hideout";
+    el.style.left = leftPct + "%";
+    el.style.bottom = bottomPct + "%";
+    el.innerHTML = SPOT_SVGS[kind];
+    $("playArea").appendChild(el);
+    game.hideouts.push({ el, leftPct, bottomPct, occupied: false });
+  }
+}
+
+function pickFreeHideout() {
+  const free = game.hideouts.filter(h => !h.occupied);
+  return free[Math.floor(Math.random() * free.length)] || null;
+}
+
 function spawnGem(delay = 0) {
   setTimeout(() => {
     if (!game.running) return;
+    const hideout = pickFreeHideout();
+    if (!hideout) { spawnGem(600); return; } // all spots busy — try again shortly
+    hideout.occupied = true;
     const word = pickWord();
     const color = pickColor();
     const id = game.nextGemId++;
-    const spotKind = SPOT_KINDS[Math.floor(Math.random() * SPOT_KINDS.length)];
-
-    const slotCount = game.level.maxOnScreen;
-    const slot = findFreeSlot();
-    const leftPct = slotCount === 1 ? 55 : 42 + slot * 26;
-    const bottomPct = 13 + Math.random() * 9; // nestled on the forest floor
 
     const el = document.createElement("div");
     el.className = "gem";
-    el.style.left = leftPct + "%";
-    el.style.bottom = bottomPct + "%";
+    el.style.left = hideout.leftPct + "%";
+    el.style.bottom = `calc(${hideout.bottomPct}% - 6px)`;
     const r = 36, circ = 2 * Math.PI * r;
     el.innerHTML = `
+      <div class="word"></div>
       <div class="nest">
         <svg class="timer-ring" viewBox="0 0 76 76">
           <circle class="track" cx="38" cy="38" r="${r}"/>
           <circle class="left" cx="38" cy="38" r="${r}" stroke-dasharray="${circ}" stroke-dashoffset="0"/>
         </svg>
         ${gemSVG(color)}
-        <div class="spot">${SPOT_SVGS[spotKind]}</div>
-      </div>
-      <div class="word"></div>`;
+      </div>`;
     $("playArea").appendChild(el);
 
-    const gem = { id, word, color, typed: 0, el, slot, revealed: false,
+    const gem = { id, word, color, typed: 0, el, hideout, revealed: false,
                   born: 0, life: game.level.timePerGem, ringCirc: circ };
     game.gems.push(gem);
     renderGemWord(gem);
@@ -732,7 +754,7 @@ function spawnGem(delay = 0) {
 }
 
 function rustleSpot(gem) {
-  const spot = gem.el.querySelector(".spot");
+  const spot = gem.hideout.el;
   spot.classList.remove("rustle");
   void spot.offsetWidth; // restart animation
   spot.classList.add("rustle");
@@ -748,12 +770,6 @@ function discoverySparkles(gemEl) {
     $("playArea").appendChild(s);
     setTimeout(() => s.remove(), 1300);
   }
-}
-
-function findFreeSlot() {
-  const used = game.gems.map(g => g.slot);
-  for (let i = 0; i < game.level.maxOnScreen; i++) if (!used.includes(i)) return i;
-  return 0;
 }
 
 function renderGemWord(gem) {
@@ -787,7 +803,7 @@ function missGem(gem) {
   rustleSpot(gem);
   gem.el.classList.remove("revealed");
   gem.el.classList.add("missed");
-  setTimeout(() => gem.el.remove(), 1400);
+  setTimeout(() => { gem.el.remove(); gem.hideout.occupied = false; }, 1400);
   game.missed++;
   if (!levelGoalsMet()) spawnGem(700);
 }
@@ -799,13 +815,14 @@ function collectGem(gem) {
   if (gem.color === "green") game.greenCount++;
   save.totalGems++;
 
-  // fly into the bag
+  // fly into the bag (the hideout stays behind, ready for the next gem)
+  gem.hideout.occupied = false;
   const bagRect = $("bag").getBoundingClientRect();
   gem.el.classList.add("collected");
   gem.el.style.top = gem.el.offsetTop + "px";
   gem.el.style.bottom = "auto";
   void gem.el.offsetWidth; // settle position before the flight transition
-  gem.el.style.left = (bagRect.left + bagRect.width / 2 - 55) + "px";
+  gem.el.style.left = (bagRect.left + bagRect.width / 2) + "px";
   gem.el.style.top = (bagRect.top - 30) + "px";
   gem.el.style.transform = "scale(.35)";
   gem.el.querySelector(".word").style.opacity = "0";
