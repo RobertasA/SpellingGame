@@ -7,10 +7,11 @@ so no attribution is legally required — credits below are given with thanks.
 
 | Asset | Files | Source | Author | License |
 |---|---|---|---|---|
-| Fairy (player) | `assets/sprites/fairy.png` | [Tiny Creatures](https://opengameart.org/content/tiny-creatures) (expansion to Kenney's Tiny Dungeon, made with Kenney's permission) | Clint Bellanger | CC0 1.0 |
-| Animated woodland animals (fox, rabbit, deer, bear, boar, wolf) | `assets/sprites/animals/*.png` | [Animated Wild Animals](https://opengameart.org/content/animated-wild-animals) | scratchio | CC0 1.0 |
-| Gem sprites (pink, blue, gold, green) | `assets/sprites/gems/*.png` | [GEMS!!!](https://opengameart.org/content/gems-2) | Winternaut | CC0 1.0 |
-| Forest background layers (clouds/sky, mountains, treeline) | `assets/backgrounds/*.png` | [SunnyLand Woods](https://opengameart.org/content/sunnyland-woods) | Ansimuz | CC0 1.0 |
+| Woodland animals (owl, rabbit, bear, frog, panda, duck) | `assets/sprites/animals/*.png` | [Animal Pack Remastered](https://kenney.nl/assets/animal-pack-remastered) | Kenney | CC0 1.0 |
+| Gem sprites (pink, blue, gold, green) | `assets/sprites/gems/*.png` | [Gem Match 3 Set](https://opengameart.org/content/gem-match-3-set) | Sylly | CC0 1.0 |
+| Forest trees | `assets/scenery/*.png` | [Background Elements Remastered](https://kenney.nl/assets/background-elements-remastered) | Kenney | CC0 1.0 |
+
+The fairy player sprite is original hand-drawn SVG art made for this game (no external asset).
 
 ## Audio
 
@@ -22,13 +23,12 @@ so no attribution is legally required — credits below are given with thanks.
 
 ## License verification notes
 
-- **Tiny Creatures** — OpenGameArt page lists CC0; the pack's bundled `License.txt` confirms CC0 1.0 Universal.
-- **Animated Wild Animals** — OpenGameArt page lists CC0. Idle sheets are used (Wolf uses its Howl animation, as it has no idle).
-- **GEMS!!! by Winternaut** — OpenGameArt page lists CC0.
-- **SunnyLand Woods** — OpenGameArt page lists CC0. Only the art layers are used; the demo's bundled music was *not* used since its licensing is not clearly stated.
+- **Gem Match 3 Set** — OpenGameArt page lists CC0.
 - **Cozy Puzzle In-Game 1** — OpenGameArt page lists CC0; track is marked loopable by the author.
 - **Kenney packs** — kenney.nl assets are CC0; each pack ships a `License.txt` confirming this.
 
 Candidate sources that were evaluated but not used: FreePD.com (site has shut down),
 "Natural Forest Fantasy Music" by Thalon (CC-BY — passed over in favour of a CC0 track),
-Kenney Animal Pack Remastered (missing fox/hedgehog/deer/squirrel needed for the menagerie).
+Tiny Creatures by Clint Bellanger, SunnyLand Woods by Ansimuz, GEMS!!! by Winternaut,
+and Animated Wild Animals by scratchio (all CC0 — used in earlier pixel-art revisions
+of this branch and replaced by the Kenney flat-cartoon set).
