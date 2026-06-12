@@ -6,15 +6,14 @@
 <title>Gem Fairy — Spelling Game</title>
 <style>
   :root {
-    --sky-top: #bfe3d8;
-    --sky-bottom: #f4eecf;
-    --canopy-far: #aacfa0;
-    --canopy-near: #7db877;
-    --trunk: #8a6a4f;
-    --floor: #8fc183;
-    --ink: #5b4a68;
-    --accent: #b487c8;
-    --gold: #f0c75e;
+    /* Bluey-inspired palette: powdery sky, warm sage greens, pale gum trunks */
+    --sky-top: #a9dcf2;
+    --sky-bottom: #f2f4d3;
+    --trunk: #e8d7b8;
+    --floor: #b3d68f;
+    --ink: #4f5560;
+    --accent: #4e9fd6;
+    --gold: #f7b961;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
@@ -36,12 +35,12 @@
   .scenery { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
   .sun {
     position: absolute; top: 6%; right: 10%;
-    width: 90px; height: 90px; border-radius: 50%;
-    background: radial-gradient(circle, #fff3c4, #ffe08a 60%, transparent 70%);
+    width: 110px; height: 110px; border-radius: 50%;
+    background: radial-gradient(circle, #fffbe6 45%, #ffe9a8 62%, transparent 72%);
   }
   .cloud {
-    position: absolute; height: 28px; border-radius: 20px;
-    background: rgba(255,255,255,.85);
+    position: absolute; height: 30px; border-radius: 30px 30px 14px 14px;
+    background: rgba(255,255,255,.95);
     animation: drift linear infinite;
   }
   .cloud::before, .cloud::after {
@@ -63,8 +62,8 @@
   .forest-layer .tree svg { display: block; width: 100%; height: 100%; }
   .ground {
     position: absolute; left: 0; bottom: 0; width: 260vw; height: 13%;
-    background: linear-gradient(var(--floor), #6fa566);
-    border-top: 4px solid rgba(255,255,255,.25);
+    background: linear-gradient(var(--floor), #93bd6e);
+    border-top: 4px solid rgba(255,255,255,.35);
     transition: transform .8s ease;
   }
   .ground .sprout { position: absolute; bottom: 55%; font-size: 20px; }
@@ -355,44 +354,49 @@ function gemSVG(color) {
   </svg>`;
 }
 
-function roundTreeSVG(canopy, shade) {
+/* Bluey-style gum trees: pale branching trunks, blobby clustered canopies */
+function gumTreeSVG(canopy, shade, trunk) {
   return `<svg viewBox="0 0 80 120" preserveAspectRatio="none">
-    <rect x="34" y="68" width="12" height="52" rx="5" fill="#8a6a4f"/>
-    <circle cx="40" cy="44" r="30" fill="${canopy}"/>
-    <circle cx="20" cy="60" r="19" fill="${shade}"/>
-    <circle cx="60" cy="60" r="19" fill="${shade}"/>
+    <path d="M38 120 Q40 84 39 64 Q39 52 30 38 M39 66 Q46 52 56 44"
+          stroke="${trunk}" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <ellipse cx="28" cy="32" rx="20" ry="15" fill="${canopy}"/>
+    <ellipse cx="56" cy="38" rx="17" ry="13" fill="${shade}"/>
+    <ellipse cx="42" cy="20" rx="18" ry="13" fill="${shade}"/>
+    <ellipse cx="40" cy="32" rx="13" ry="10" fill="${canopy}"/>
   </svg>`;
 }
-function pineTreeSVG(canopy, shade) {
+function gumTreeTallSVG(canopy, shade, trunk) {
   return `<svg viewBox="0 0 80 120" preserveAspectRatio="none">
-    <rect x="35" y="92" width="10" height="28" rx="4" fill="#8a6a4f"/>
-    <polygon points="40,4 64,46 16,46" fill="${canopy}"/>
-    <polygon points="40,30 70,76 10,76" fill="${shade}"/>
-    <polygon points="40,58 76,100 4,100" fill="${canopy}"/>
+    <path d="M42 120 Q40 80 42 56 Q43 44 50 34 M42 60 Q34 48 26 44"
+          stroke="${trunk}" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <ellipse cx="52" cy="26" rx="19" ry="14" fill="${canopy}"/>
+    <ellipse cx="26" cy="38" rx="15" ry="11" fill="${shade}"/>
+    <ellipse cx="44" cy="40" rx="14" ry="10" fill="${shade}"/>
+    <ellipse cx="60" cy="40" rx="11" ry="9" fill="${canopy}"/>
   </svg>`;
 }
 
 /* hiding spots the gems are tucked into */
 const SPOT_SVGS = {
   bush: `<svg viewBox="0 0 100 46">
-    <circle cx="24" cy="32" r="20" fill="#6fb474"/>
-    <circle cx="50" cy="26" r="24" fill="#7dc282"/>
-    <circle cx="78" cy="32" r="18" fill="#6fb474"/>
-    <circle cx="38" cy="20" r="4" fill="#e9a0b4"/>
-    <circle cx="64" cy="24" r="4" fill="#f0c75e"/>
+    <circle cx="24" cy="32" r="20" fill="#8fbb73"/>
+    <circle cx="50" cy="26" r="24" fill="#9cc185"/>
+    <circle cx="78" cy="32" r="18" fill="#8fbb73"/>
+    <circle cx="38" cy="20" r="4" fill="#f4a9a0"/>
+    <circle cx="64" cy="24" r="4" fill="#f7b961"/>
   </svg>`,
   stump: `<svg viewBox="0 0 100 46">
-    <rect x="26" y="14" width="48" height="28" rx="6" fill="#8a6a4f"/>
-    <ellipse cx="50" cy="14" rx="24" ry="9" fill="#c9a87f"/>
-    <ellipse cx="50" cy="14" rx="14" ry="5" fill="#b08d63"/>
-    <path d="M12 42 Q16 26 22 42 M84 42 Q88 28 94 42" fill="#6fb474"/>
+    <rect x="26" y="14" width="48" height="28" rx="6" fill="#d9c39e"/>
+    <ellipse cx="50" cy="14" rx="24" ry="9" fill="#efe3cb"/>
+    <ellipse cx="50" cy="14" rx="14" ry="5" fill="#d9c39e"/>
+    <path d="M12 42 Q16 26 22 42 M84 42 Q88 28 94 42" fill="#8fbb73"/>
   </svg>`,
   ferns: `<svg viewBox="0 0 100 46">
     <path d="M20 46 Q14 18 4 14 M20 46 Q22 16 12 6 M20 46 Q30 20 36 16"
-          stroke="#5e9c63" stroke-width="5" fill="none" stroke-linecap="round"/>
+          stroke="#7dab62" stroke-width="5" fill="none" stroke-linecap="round"/>
     <path d="M78 46 Q72 22 64 18 M78 46 Q82 18 90 8 M78 46 Q90 24 96 20"
-          stroke="#6fb474" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="50" cy="42" rx="22" ry="7" fill="#7dc282"/>
+          stroke="#8fbb73" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="50" cy="42" rx="22" ry="7" fill="#9cc185"/>
   </svg>`,
 };
 const SPOT_KINDS = Object.keys(SPOT_SVGS);
@@ -459,16 +463,16 @@ const ANIMAL_SVGS = {
 };
 
 const FAIRY_SVG = `<svg viewBox="0 0 90 100">
-  <ellipse cx="28" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(-25 28 42)"/>
-  <ellipse cx="62" cy="42" rx="22" ry="14" fill="rgba(200,230,255,.7)" transform="rotate(25 62 42)"/>
-  <polygon points="45,42 28,84 62,84" fill="#b487c8"/>
-  <circle cx="45" cy="30" r="13" fill="#ffd9b8"/>
-  <path d="M32 28 Q34 12 45 14 Q58 12 58 28 Q52 20 45 21 Q38 20 32 28" fill="#8a5a3b"/>
+  <ellipse cx="28" cy="42" rx="22" ry="14" fill="rgba(255,255,255,.75)" transform="rotate(-25 28 42)"/>
+  <ellipse cx="62" cy="42" rx="22" ry="14" fill="rgba(255,255,255,.75)" transform="rotate(25 62 42)"/>
+  <polygon points="45,42 28,84 62,84" fill="#4e9fd6"/>
+  <circle cx="45" cy="30" r="13" fill="#ffe0c2"/>
+  <path d="M32 28 Q34 12 45 14 Q58 12 58 28 Q52 20 45 21 Q38 20 32 28" fill="#a8743f"/>
   <circle cx="40" cy="30" r="2" fill="#3b2b20"/>
   <circle cx="50" cy="30" r="2" fill="#3b2b20"/>
   <path d="M41 36 Q45 39 49 36" stroke="#3b2b20" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-  <line x1="62" y1="60" x2="78" y2="44" stroke="#8a5a3b" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="80" cy="42" r="5" fill="#ffe08a"/>
+  <line x1="62" y1="60" x2="78" y2="44" stroke="#a8743f" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="80" cy="42" r="5" fill="#f7b961"/>
 </svg>`;
 
 /* ============================ persistence ============================ */
@@ -519,8 +523,10 @@ function showScreen(id) {
 
 function buildForest() {
   const layers = [
-    { el: $("forestFar"),  count: 16, minW: 70,  maxW: 120, colors: [["#aacfa0", "#98c290"], ["#a3c9ac", "#8fbd9a"]] },
-    { el: $("forestNear"), count: 11, minW: 120, maxW: 190, colors: [["#7db877", "#6aa965"], ["#74b283", "#5fa06f"]] },
+    { el: $("forestFar"),  count: 16, minW: 70,  maxW: 120, trunk: "#efe3cb",
+      colors: [["#bcd6a0", "#abc98e"], ["#b2cfa9", "#a0c295"]] },
+    { el: $("forestNear"), count: 11, minW: 120, maxW: 190, trunk: "#e8d7b8",
+      colors: [["#8fbb73", "#7dab62"], ["#9cc185", "#86b06e"]] },
   ];
   for (const layer of layers) {
     layer.el.innerHTML = "";
@@ -532,7 +538,9 @@ function buildForest() {
       tree.style.width = w + "px";
       tree.style.height = (w * 1.45) + "px";
       tree.style.left = (i / layer.count * 250 + Math.random() * 8) + "vw";
-      tree.innerHTML = Math.random() < 0.35 ? pineTreeSVG(canopy, shade) : roundTreeSVG(canopy, shade);
+      tree.innerHTML = Math.random() < 0.45
+        ? gumTreeTallSVG(canopy, shade, layer.trunk)
+        : gumTreeSVG(canopy, shade, layer.trunk);
       layer.el.appendChild(tree);
     }
   }
