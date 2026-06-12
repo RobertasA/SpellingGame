@@ -9,9 +9,10 @@ so no attribution is legally required — credits below are given with thanks.
 |---|---|---|---|---|
 | Woodland animals (owl, rabbit, bear, frog, panda, duck) | `assets/sprites/animals/*.png` | [Animal Pack Remastered](https://kenney.nl/assets/animal-pack-remastered) | Kenney | CC0 1.0 |
 | Gem sprites (pink, blue, gold, green) | `assets/sprites/gems/*.png` | [Gem Match 3 Set](https://opengameart.org/content/gem-match-3-set) | Sylly | CC0 1.0 |
-| Forest trees | `assets/scenery/*.png` | [Background Elements Remastered](https://kenney.nl/assets/background-elements-remastered) | Kenney | CC0 1.0 |
+| Forest trees | `assets/scenery/*.png` | [Background Elements Remastered](https://kenney.nl/assets/background-elements-remastered) | Kenney | CC0 1.0 — currently unused; the game draws its own gum-tree SVGs |
 
-The fairy player sprite is original hand-drawn SVG art made for this game (no external asset).
+The fairy player sprite, gum trees, and hiding spots (bush, stump, ferns) are original
+hand-drawn SVG art made for this game (no external asset).
 
 ## Audio
 
