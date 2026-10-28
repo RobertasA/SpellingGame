@@ -1,16 +1,41 @@
-# SpellingGame
+# Gem Fairy — a spelling game
 
-This is a spelling game for a kid - inspired by spelling shooter games, such as ztype - but different theme and no stress.
+A gentle, no-stress spelling game for a kid, inspired by typing shooters like ztype.
+It's built in 3D with [three.js](https://threejs.org/).
 
-The theme is a fairy collecting gems. The gems fall as the word is typed. There are 20 levels - early levels are easy limited to easy "S, A, T, P, I, N" words. 
-First level is just collecting 10 gems, moving forward one step as every gem is collected.
-Following levels - the fairy moves faster (leaving less time to type before the gem falls out), and the words get harder.
-We also get challenges - where we need to collect specific colour gems - e.g. the bag holds 10 gems, but we are requested to collected 4 at least for green ones).
+## The idea
 
-Each collected gem has a chance of giving a reward - e.g. an animal to your menagerie. The collected animals add up to your crew, creating a lovely cottagecore+woodland aesthetic. 
+A little puppy fairy flies through a sunny woodland. Gems peek out of bushes, mushrooms,
+stumps and flowers, and each gem carries a word. **Type the word to catch the gem** —
+the fairy zaps it with a star wand and it flies into the bag. If the fairy flies past before
+the word is spelled, the gem just hides again. There's no losing, only trying again.
 
+- **20 levels** that follow a phonics order: SATPIN words first, then new sounds,
+  digraphs (sh, ch, th), blends, vowel teams, magic-e, tricky words, and finally long words.
+- As levels go up the fairy flies faster and more gems can be out at once.
+- The forest slows down while you're in the middle of spelling a word.
+- **Colour challenges** on some levels: e.g. fill the bag of 10, with at least 4 green.
+- Each gem caught has a chance to bring a **woodland friend** (bunny, bear, panda, frog,
+  duckling, owl, fox, hedgehog) who joins the crew hopping along behind the fairy.
+  See them all under **My Crew**.
+- Stars per level: 3 stars for catching every gem, fewer if some hid again.
+- Optional read-aloud: the game says each word when you catch it (🗣️ button).
+- Tablets get an on-screen keyboard. `Esc` pauses, `Backspace` lets go of a word.
+
+Progress, stars and your crew are saved in the browser (localStorage).
+
+## Running it
+
+Open `index.html` in a browser (an internet connection is needed to load three.js and
+the font). For sound to load reliably, serve the folder locally instead:
+
+```bash
+python3 -m http.server 8000
+```
+
+then visit <http://localhost:8000>.
 
 ## Assets
 
-All art, music, and sound effects under `assets/` are CC0 open-source assets —
+The 3D art is all made in code. Music and sound effects under `assets/audio/` are CC0 —
 see [CREDITS.md](CREDITS.md) for sources and authors.

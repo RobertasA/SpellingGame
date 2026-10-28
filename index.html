@@ -2,1001 +2,1814 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gem Fairy — Spelling Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Gem Fairy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* Bluey-inspired palette: powdery sky, warm sage greens, pale gum trunks */
-    --sky-top: #a9dcf2;
-    --sky-bottom: #f2f4d3;
-    --trunk: #e8d7b8;
-    --floor: #b3d68f;
-    --ink: #4f5560;
-    --accent: #4e9fd6;
-    --gold: #f7b961;
+    --ink: #5b4a6e;
+    --ink-soft: #8d7ba3;
+    --card: rgba(255, 252, 255, .92);
+    --pink: #ff8fc8;
+    --pink-deep: #f06aae;
+    --mint: #7fe0b0;
+    --sky: #a8dcff;
+    --gold: #ffcf4a;
+    --shadow: 0 8px 0 rgba(120, 80, 150, .18), 0 14px 30px rgba(120, 80, 150, .18);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; }
   body {
-    font-family: "Comic Sans MS", "Chalkboard SE", "Segoe UI", sans-serif;
+    font-family: "Fredoka", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
     color: var(--ink);
-    background: linear-gradient(var(--sky-top), var(--sky-bottom));
+    background: #f3eefc;
     user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
   }
+  canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 
-  .screen {
-    position: absolute; inset: 0;
-    display: none;
-    flex-direction: column; align-items: center; justify-content: center;
-  }
-  .screen.active { display: flex; }
-
-  /* ---------- shared background scenery ---------- */
-  .scenery { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-  .sun {
-    position: absolute; top: 6%; right: 10%;
-    width: 110px; height: 110px; border-radius: 50%;
-    background: radial-gradient(circle, #fffbe6 45%, #ffe9a8 62%, transparent 72%);
-  }
-  .cloud {
-    position: absolute; height: 30px; border-radius: 30px 30px 14px 14px;
-    background: rgba(255,255,255,.95);
-    animation: drift linear infinite;
-  }
-  .cloud::before, .cloud::after {
-    content:""; position:absolute; background:inherit; border-radius:50%;
-  }
-  .cloud::before { width:34px; height:34px; top:-16px; left:12px; }
-  .cloud::after  { width:24px; height:24px; top:-10px; right:14px; }
-  @keyframes drift {
-    from { transform: translateX(-160px); }
-    to   { transform: translateX(calc(100vw + 160px)); }
-  }
-  .forest-layer {
-    position: absolute; left: 0; bottom: 0; width: 260vw;
-    transition: transform .8s ease;
-  }
-  .forest-layer.far  { height: 52%; opacity: .65; }
-  .forest-layer.near { height: 62%; }
-  .forest-layer .tree { position: absolute; bottom: 0; }
-  .forest-layer .tree svg { display: block; width: 100%; height: 100%; }
-  .ground {
-    position: absolute; left: 0; bottom: 0; width: 260vw; height: 13%;
-    background: linear-gradient(var(--floor), #93bd6e);
-    border-top: 4px solid rgba(255,255,255,.35);
-    transition: transform .8s ease;
-  }
-  .ground .sprout { position: absolute; bottom: 55%; font-size: 20px; }
-  .firefly {
-    position: absolute; width: 6px; height: 6px; border-radius: 50%;
-    background: #fff7c4; box-shadow: 0 0 10px 4px rgba(255,240,160,.8);
-    animation: glow 3.2s ease-in-out infinite;
-  }
-  @keyframes glow {
-    0%,100% { opacity: .15; transform: translateY(0); }
-    50%     { opacity: .9;  transform: translateY(-14px); }
-  }
-
-  /* ---------- title screen ---------- */
-  h1.title {
-    font-size: clamp(2.2rem, 6vw, 4rem);
-    color: var(--accent);
-    text-shadow: 0 3px 0 rgba(255,255,255,.8);
-    margin-bottom: .4em;
-    z-index: 1;
-  }
-  .subtitle { z-index: 1; margin-bottom: 2em; font-size: 1.1rem; }
-  .menu-buttons { display: flex; flex-direction: column; gap: 14px; z-index: 1; }
-  button.big {
-    font-family: inherit; font-size: 1.3rem; color: var(--ink);
-    padding: 14px 48px; border: none; border-radius: 30px;
-    background: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.12);
-    cursor: pointer; transition: transform .1s;
-  }
-  button.big:hover:not(:disabled) { transform: scale(1.05); }
-  button.big:disabled { opacity: .45; cursor: default; }
-  button.big.primary { background: var(--accent); color: #fff; }
-  .level-row { display: flex; gap: 12px; justify-content: center; }
-  .level-row button.big { padding: 14px 24px; }
-  .best-note { font-size: .75rem; display: block; opacity: .7; }
-
-  /* ---------- gameplay ---------- */
-  #playArea { position: absolute; inset: 0; }
-  .hud {
-    position: absolute; top: 12px; left: 0; right: 0;
-    display: flex; justify-content: center; gap: 28px;
-    font-size: 1.05rem; z-index: 5;
-  }
-  .hud .pill {
-    background: rgba(255,255,255,.85); border-radius: 20px;
-    padding: 6px 18px; box-shadow: 0 2px 0 rgba(0,0,0,.08);
-  }
-  #challengePill { color: #2e7d4f; font-weight: bold; }
-  #quitBtn {
-    position: absolute; top: 12px; left: 12px; z-index: 6;
-    font-family: inherit; border: none; border-radius: 16px;
-    background: rgba(255,255,255,.8); padding: 6px 14px; cursor: pointer; color: var(--ink);
-  }
-  #muteBtn {
-    position: absolute; top: 12px; right: 12px; z-index: 30;
-    font-family: inherit; font-size: 1.1rem; border: none; border-radius: 16px;
-    background: rgba(255,255,255,.8); padding: 6px 12px; cursor: pointer;
-  }
-
-  /* fairy */
-  #fairy {
-    position: absolute; width: 90px; height: 100px; z-index: 4;
-    transition: left .6s ease;
-    animation: bob 2.4s ease-in-out infinite;
-  }
-  @keyframes bob { 0%,100% { margin-top: 0; } 50% { margin-top: -14px; } }
-  .sparkle {
-    position: absolute; width: 7px; height: 7px; border-radius: 50%; z-index: 6;
-    background: #fff; box-shadow: 0 0 8px 3px rgba(255,230,150,.9);
-    pointer-events: none; animation: sparkleFade .9s forwards;
-  }
-  @keyframes sparkleFade { to { opacity: 0; transform: translateY(18px) scale(.3); } }
-
-  /* hideouts — permanent hiding spots scattered on the forest floor */
-  .hideout {
-    position: absolute; width: 100px; z-index: 3;
-    transform: translateX(-50%); pointer-events: none;
-  }
-  .hideout svg { display: block; width: 100%; }
-  .hideout.rustle { animation: rustle .5s; }
-  @keyframes rustle {
-    20% { transform: translateX(-50%) rotate(-4deg); }
-    50% { transform: translateX(-50%) rotate(4deg); }
-    80% { transform: translateX(-50%) rotate(-2deg); }
-  }
-
-  /* gems — pop up out of the hideouts, discovered by the fairy */
-  .gem {
-    position: absolute; width: 110px; margin-left: -55px;
-    text-align: center; z-index: 2;
-    transition: opacity .3s;
-  }
-  .gem .nest { position: relative; width: 110px; height: 104px; margin: 0 auto; }
-  .gem img.stone {
-    width: 62px; height: 62px; display: block;
-    position: absolute; left: 24px; bottom: 25px;
-    transform: translateY(42px) scale(.4); opacity: 0;
-    transition: transform .7s cubic-bezier(.34,1.45,.5,1), opacity .45s;
-  }
-  .gem.revealed img.stone { transform: translateY(0) scale(1); opacity: 1; }
-  .gem .word {
-    margin-bottom: 2px; display: inline-block;
-    background: rgba(255,255,255,.9); border-radius: 14px;
-    padding: 4px 14px; font-size: 1.5rem; letter-spacing: 3px;
-    box-shadow: 0 2px 0 rgba(0,0,0,.1);
-    opacity: 0; transition: opacity .4s;
-  }
-  .gem.revealed .word { opacity: 1; }
-  .gem .word .done { color: var(--accent); font-weight: bold; }
-  .gem.target .word { outline: 3px solid var(--accent); }
-  .gem.wiggle { animation: wiggle .3s; }
-  @keyframes wiggle {
-    25% { transform: translateX(-6px) rotate(-3deg); }
-    75% { transform: translateX(6px) rotate(3deg); }
-  }
-  .gem.collected { transition: all .65s cubic-bezier(.5,-0.3,.7,1); opacity: .9; z-index: 7; }
-  .gem.missed img.stone { transform: translateY(42px) scale(.4); opacity: 0; }
-  .gem.missed .word, .gem.missed .timer-ring { opacity: 0; }
-  .gem.missed { transition: opacity .6s ease .7s; opacity: 0; }
-  .timer-ring {
-    position: absolute; top: 10px; left: 17px; width: 76px; height: 76px;
-    z-index: 3; opacity: 0; transition: opacity .4s;
-  }
-  .gem.revealed .timer-ring { opacity: 1; }
-  .timer-ring circle.track { fill: none; stroke: rgba(255,255,255,.6); stroke-width: 4; }
-  .timer-ring circle.left  { fill: none; stroke: var(--gold); stroke-width: 4; stroke-linecap: round;
-                             transform: rotate(-90deg); transform-origin: center; }
-
-  /* bag / progress */
-  #bag {
-    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
-    display: flex; align-items: center; gap: 8px; z-index: 5;
-    background: rgba(255,248,235,.92); border: 3px solid #d9b98c;
-    border-radius: 22px; padding: 10px 18px;
-  }
-  #bag .slot {
-    width: 26px; height: 26px; border-radius: 6px;
-    background: rgba(0,0,0,.07); display: flex; align-items: center; justify-content: center;
-  }
-  #bag .slot img { width: 22px; height: 22px; }
-
-  /* toasts / reward popup */
-  #rewardToast {
-    position: absolute; top: 24%; left: 50%; transform: translateX(-50%) scale(0);
-    background: #fff; border-radius: 24px; padding: 18px 30px; z-index: 9;
-    text-align: center; box-shadow: 0 6px 24px rgba(0,0,0,.18);
-    transition: transform .35s cubic-bezier(.2,1.6,.4,1);
-  }
-  #rewardToast.show { transform: translateX(-50%) scale(1); }
-  #rewardToast img { width: 80px; height: 80px; }
-  #rewardToast .msg { font-size: 1.15rem; margin-top: 6px; }
-
-  /* ---------- overlays (level complete) ---------- */
+  /* ---------- overlays ---------- */
   .overlay {
-    position: absolute; inset: 0; z-index: 20; display: none;
-    align-items: center; justify-content: center;
-    background: rgba(91,74,104,.35);
+    position: fixed; inset: 0;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+    z-index: 20;
   }
   .overlay.active { display: flex; }
+  .overlay.dim { background: rgba(243, 230, 255, .35); backdrop-filter: blur(2px); }
   .card {
-    background: #fffdf7; border-radius: 28px; padding: 36px 48px;
-    text-align: center; max-width: 480px; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+    background: var(--card);
+    border-radius: 32px;
+    padding: 28px 32px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    max-width: 560px; width: 100%;
+    max-height: calc(100vh - 32px); overflow: auto;
+    animation: pop .45s cubic-bezier(.2, 1.6, .4, 1);
   }
-  .card h2 { color: var(--accent); font-size: 2rem; margin-bottom: .5em; }
-  .card .stats { font-size: 1.1rem; margin-bottom: 1em; line-height: 1.7; }
-  .card .new-animals { margin-bottom: 1em; }
-  .card .new-animals img { width: 56px; height: 56px; margin: 0 4px; }
-  .card .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  h1 {
+    font-size: clamp(42px, 9vw, 72px); line-height: 1;
+    color: var(--pink-deep);
+    text-shadow: 0 4px 0 #ffd6ec;
+    letter-spacing: 1px;
+  }
+  h2 { font-size: 34px; color: var(--pink-deep); margin-bottom: 8px; }
+  .sub { font-size: 19px; color: var(--ink-soft); margin: 10px 0 22px; }
+  .btn-col { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+  button {
+    font: inherit; cursor: pointer; border: 0;
+    color: #fff; background: var(--pink);
+    font-size: 22px; font-weight: 600;
+    padding: 12px 28px; border-radius: 999px;
+    box-shadow: 0 5px 0 var(--pink-deep);
+    transition: transform .1s, box-shadow .1s, filter .15s;
+  }
+  button:hover { filter: brightness(1.06); transform: translateY(-1px); }
+  button:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--pink-deep); }
+  button.big { font-size: 28px; padding: 14px 44px; }
+  button.mint { background: var(--mint); box-shadow: 0 5px 0 #4fc28e; }
+  button.sky { background: #7cc6ff; box-shadow: 0 5px 0 #4b9fe0; }
+  button.ghost { background: #fff; color: var(--ink); box-shadow: 0 5px 0 #e1d4ef; }
+  button:disabled { filter: grayscale(.8) opacity(.5); cursor: default; transform: none; }
 
-  /* ---------- menagerie ---------- */
-  #menagerieScreen .meadow {
-    z-index: 1; background: rgba(255,255,255,.55); border-radius: 28px;
-    padding: 28px 36px; max-width: 640px; width: 90%;
-    max-height: 60vh; overflow-y: auto;
+  /* level picker */
+  .level-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+    margin: 18px 0 6px;
   }
-  #menagerieGrid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
-  #menagerieGrid .pet { text-align: center; font-size: .8rem; }
-  #menagerieGrid .pet img { width: 64px; height: 64px; display: block; margin: 0 auto 4px; }
-  .empty-note { opacity: .7; font-style: italic; }
+  .level-grid button {
+    padding: 8px 0 6px; font-size: 24px; border-radius: 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .level-grid .stars { font-size: 12px; letter-spacing: 1px; min-height: 15px; }
+  .level-grid button.locked { background: #d9cfe6; box-shadow: 0 5px 0 #c2b5d4; }
+
+  /* ---------- HUD ---------- */
+  #hud {
+    position: fixed; left: 0; right: 0; top: 0;
+    display: none; justify-content: space-between; align-items: flex-start;
+    padding: 12px 16px; gap: 10px; z-index: 10; pointer-events: none;
+  }
+  #hud.active { display: flex; }
+  .hud-left { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .pill {
+    background: var(--card); border-radius: 999px;
+    padding: 6px 16px; font-size: 19px; font-weight: 600;
+    box-shadow: 0 4px 0 rgba(120, 80, 150, .15);
+    display: flex; align-items: center; gap: 6px;
+  }
+  #bag { padding: 6px 12px; }
+  #bag .slot {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #efe6f7; display: grid; place-items: center;
+  }
+  #bag .slot svg { width: 22px; height: 22px; animation: pop .4s cubic-bezier(.2, 1.8, .4, 1); }
+  #challengePill.done { background: #dbffe9; }
+  .hud-right { display: flex; gap: 8px; pointer-events: auto; }
+  .icon-btn {
+    width: 48px; height: 48px; padding: 0; font-size: 22px;
+    background: var(--card); color: var(--ink);
+    box-shadow: 0 4px 0 rgba(120, 80, 150, .18);
+  }
+  .icon-btn.off { opacity: .55; }
+  #crewBar .hud-right, #crewTitle { pointer-events: auto; }
+
+  /* ---------- word labels floating over gems ---------- */
+  #labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+  .label {
+    position: absolute; left: 0; top: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    will-change: transform;
+    transition: opacity .3s;
+  }
+  .word {
+    background: rgba(255, 255, 255, .9);
+    border-radius: 18px;
+    padding: 2px 14px 4px;
+    font-size: clamp(26px, 3.4vw, 38px); font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--ink);
+    box-shadow: 0 4px 0 rgba(120, 80, 150, .15);
+    white-space: nowrap;
+    transition: transform .15s;
+  }
+  .word span.done { color: var(--pink-deep); }
+  .word span.next { text-decoration: underline 3px var(--gold); text-underline-offset: 5px; }
+  .label.target .word {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 4px var(--gold), 0 6px 0 rgba(120, 80, 150, .2);
+  }
+  .label.wiggle .word { animation: wiggle .35s; }
+  @keyframes wiggle {
+    0%, 100% { translate: 0; } 20% { translate: -7px; } 40% { translate: 6px; }
+    60% { translate: -4px; } 80% { translate: 3px; }
+  }
+  .timer { width: 64px; height: 8px; border-radius: 8px; background: rgba(255, 255, 255, .7); overflow: hidden; }
+  .timer i { display: block; height: 100%; width: 100%; background: var(--mint); border-radius: 8px; transform-origin: left; }
+  .crew-label {
+    background: var(--card); border-radius: 14px; padding: 3px 12px;
+    font-size: 18px; font-weight: 600; white-space: nowrap;
+    box-shadow: 0 3px 0 rgba(120, 80, 150, .15);
+  }
+  .crew-label.unknown { color: var(--ink-soft); }
+
+  /* ---------- toast, hint, crew bar ---------- */
+  #toast {
+    position: fixed; left: 50%; bottom: 18%;
+    transform: translate(-50%, 30px) scale(.8); opacity: 0;
+    background: var(--card); border-radius: 24px; padding: 12px 24px;
+    font-size: 24px; font-weight: 600; box-shadow: var(--shadow);
+    transition: all .35s cubic-bezier(.2, 1.6, .4, 1);
+    z-index: 15; pointer-events: none; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  #hint {
+    position: fixed; left: 50%; bottom: 7%; transform: translateX(-50%);
+    font-size: 22px; font-weight: 600; color: #fff;
+    background: rgba(140, 100, 180, .55); padding: 8px 20px; border-radius: 999px;
+    z-index: 6; pointer-events: none; opacity: 0; transition: opacity .5s;
+    white-space: nowrap;
+  }
+  #hint.show { opacity: 1; }
+  #crewBar {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 10;
+    display: none; justify-content: space-between; align-items: center; padding: 14px 16px;
+  }
+  #crewBar.active { display: flex; }
+  #crewTitle { font-size: 26px; padding: 8px 22px; }
+
+  /* complete screen */
+  .big-stars { font-size: 54px; letter-spacing: 6px; margin: 4px 0 10px; }
+  .big-stars .dim { filter: grayscale(1) opacity(.3); }
+  .stats { font-size: 20px; line-height: 1.7; }
+  .friends { font-size: 20px; margin-top: 10px; }
+  .friends .emo { font-size: 36px; display: inline-block; animation: hop .6s ease-in-out infinite alternate; }
+  @keyframes hop { to { transform: translateY(-6px); } }
+
+  /* on-screen keyboard for tablets */
+  #kbd {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 12;
+    display: none; flex-direction: column; gap: 6px; padding: 8px 6px 12px;
+    background: rgba(255, 250, 255, .75); backdrop-filter: blur(4px);
+  }
+  #kbd.active { display: flex; }
+  #kbd .row { display: flex; justify-content: center; gap: 6px; }
+  #kbd button {
+    flex: 0 1 56px; height: 52px; padding: 0; font-size: 26px; border-radius: 14px;
+    background: #fff; color: var(--ink); box-shadow: 0 4px 0 #e1d4ef;
+  }
+
+  #loading {
+    position: fixed; inset: 0; display: grid; place-items: center;
+    font-size: 28px; color: var(--ink-soft); z-index: 30; background: #f3eefc;
+    text-align: center; padding: 16px;
+  }
 </style>
 </head>
 <body>
+<canvas id="scene"></canvas>
+<div id="labels"></div>
+<div id="loading">✨ Waking up the fairy… ✨</div>
 
-<!-- shared scenery -->
-<div class="scenery" id="scenery">
-  <div class="sun"></div>
-  <div class="cloud" style="top:12%; width:70px; animation-duration:55s;"></div>
-  <div class="cloud" style="top:22%; width:90px; animation-duration:75s; animation-delay:-30s;"></div>
-  <div class="cloud" style="top:8%;  width:60px; animation-duration:65s; animation-delay:-50s;"></div>
-  <div class="forest-layer far" id="forestFar"></div>
-  <div class="forest-layer near" id="forestNear"></div>
-  <div class="ground" id="ground"></div>
-  <div class="firefly" style="left:18%; top:48%; animation-delay:-1s;"></div>
-  <div class="firefly" style="left:46%; top:40%; animation-delay:-2.2s;"></div>
-  <div class="firefly" style="left:72%; top:52%;"></div>
-  <div class="firefly" style="left:88%; top:38%; animation-delay:-1.6s;"></div>
-</div>
-
-<button id="muteBtn" title="Toggle music & sound">🔊</button>
-
-<!-- title screen -->
-<div class="screen active" id="titleScreen">
-  <h1 class="title">✨ Gem Fairy ✨</h1>
-  <p class="subtitle">Type the words to discover gems hidden in the forest!</p>
-  <div class="menu-buttons">
-    <button class="big primary" id="playBtn">Play</button>
-    <div class="level-row" id="levelRow"></div>
-    <button class="big" id="menagerieBtn">Menagerie 🦉</button>
-  </div>
-</div>
-
-<!-- gameplay screen -->
-<div class="screen" id="gameScreen">
-  <div id="playArea"></div>
-  <button id="quitBtn">← Menu</button>
-  <div class="hud">
-    <span class="pill" id="levelPill">Level 1</span>
-    <span class="pill" id="gemPill">Gems 0 / 10</span>
-    <span class="pill" id="challengePill" style="display:none;"></span>
-  </div>
-  <div id="bag"></div>
-  <div id="rewardToast"></div>
-</div>
-
-<!-- level complete overlay -->
-<div class="overlay" id="completeOverlay">
+<!-- title -->
+<div class="overlay active" id="titleScreen">
   <div class="card">
-    <h2>Level Complete! 🎉</h2>
-    <div class="stats" id="completeStats"></div>
-    <div class="new-animals" id="completeAnimals"></div>
-    <div class="buttons">
-      <button class="big" id="replayBtn">Replay</button>
-      <button class="big primary" id="nextBtn">Next level</button>
-      <button class="big" id="menuBtn">Menu</button>
+    <h1>Gem Fairy</h1>
+    <p class="sub">Spell the words to catch the sparkly gems! ✨</p>
+    <div class="btn-col">
+      <button class="big" id="playBtn">Play</button>
+      <div class="btn-row" style="margin-top:4px">
+        <button class="sky" id="levelsBtn">Levels</button>
+        <button class="mint" id="crewBtn">My Crew</button>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- menagerie screen -->
-<div class="screen" id="menagerieScreen">
-  <h1 class="title">Your Menagerie</h1>
-  <div class="meadow">
-    <div id="menagerieGrid"></div>
+<!-- level picker -->
+<div class="overlay" id="levelScreen">
+  <div class="card">
+    <h2>Pick a level</h2>
+    <div class="level-grid" id="levelGrid"></div>
+    <div class="btn-row"><button class="ghost" id="levelsBackBtn">Back</button></div>
   </div>
-  <p style="z-index:1; margin-top:18px;">
-    <button class="big" id="menagerieBackBtn">← Back</button>
-  </p>
+</div>
+
+<!-- crew viewer (the animals themselves are drawn in 3D) -->
+<div id="crewBar">
+  <div class="pill" id="crewTitle">My Crew</div>
+  <div class="hud-right"><button class="ghost" id="crewBackBtn">Back</button></div>
+</div>
+
+<!-- in-game HUD -->
+<div id="hud">
+  <div class="hud-left">
+    <div class="pill" id="levelPill">Level 1</div>
+    <div class="pill" id="bag"></div>
+    <div class="pill" id="challengePill"></div>
+  </div>
+  <div class="hud-right">
+    <button class="icon-btn" id="voiceBtn" title="Say the words out loud">🗣️</button>
+    <button class="icon-btn" id="muteBtn" title="Sound">🔊</button>
+    <button class="icon-btn" id="pauseBtn" title="Pause">⏸️</button>
+  </div>
+</div>
+<div id="hint"></div>
+<div id="toast"></div>
+<div id="kbd"></div>
+
+<!-- pause -->
+<div class="overlay dim" id="pauseScreen">
+  <div class="card">
+    <h2>Taking a little rest 🌙</h2>
+    <p class="sub">The gems will wait for you.</p>
+    <div class="btn-row">
+      <button class="big mint" id="resumeBtn">Keep going</button>
+      <button class="ghost" id="quitBtn">Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- level complete -->
+<div class="overlay dim" id="completeScreen">
+  <div class="card">
+    <h2 id="completeTitle">Bag full!</h2>
+    <div class="big-stars" id="completeStars"></div>
+    <div class="stats" id="completeStats"></div>
+    <div class="friends" id="completeFriends"></div>
+    <div class="btn-row">
+      <button class="big" id="nextBtn">Next level</button>
+      <button class="sky" id="replayBtn">Again</button>
+      <button class="ghost" id="menuBtn">Menu</button>
+    </div>
+  </div>
 </div>
 
 <script>
-"use strict";
+  // If the 3D library can't load (e.g. offline), say so instead of a blank page.
+  setTimeout(function () {
+    if (!window.__gemFairyReady) {
+      document.getElementById("loading").textContent =
+        "The fairy couldn't fly in 😢 — this game needs an internet connection the first time.";
+    }
+  }, 10000);
+</script>
+<script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from "three";
 
 /* ============================== config ============================== */
 
-const LEVELS = [
-  { // level 1 — gentle introduction
-    words: ["at","it","in","an","sat","sit","pin","tap","sip","pat","nap","tip"],
-    timePerGem: 24000, gemTarget: 10, maxOnScreen: 1, challenge: null,
-  },
-  { // level 2 — faster fairy, full SATPIN set
-    words: ["sat","sit","pin","tap","sip","tip","pat","tan","nap","pit","pan","nip","tin","sap","ant","pip"],
-    timePerGem: 18000, gemTarget: 10, maxOnScreen: 1, challenge: null,
-  },
-  { // level 3 — new letters (c k e h r m d) + green-gem challenge, two gems at once
-    words: ["cat","hen","red","mat","hat","rat","ten","net","pet","map","cap","can","kid","sad","ram","mad","men","dip"],
-    timePerGem: 8000, gemTarget: 10, maxOnScreen: 2,
-    challenge: { color: "green", count: 4 },
-  },
+// Each level adds a few new sounds, following a phonics order (SATPIN first).
+const WORDS = [
+  ["at","it","in","an","is","as","sat","sit","pin","tap","sip","pat","nap","tip","tin","pan"],
+  ["sat","pin","tap","sip","tip","pat","tan","nap","pit","pan","nip","tin","sap","ant","pip","spin"],
+  ["mat","map","man","mad","dad","dip","did","sad","and","pad","mid","dim","tad","sand","mist","damp"],
+  ["dog","got","cot","cat","cap","can","kit","kid","pig","dig","top","pot","on","not","gap","tag"],
+  ["red","ten","pet","net","run","sun","cup","rug","nut","rat","duck","sock","kick","neck","pen","tuck"],
+  ["hat","hen","hop","bed","bus","bat","fan","fig","log","leg","lip","bag","hug","fun","hut","bun"],
+  ["huff","puff","bell","doll","hill","kiss","jam","jet","van","vet","web","wig","box","six","fox","wax"],
+  ["yes","yap","zip","buzz","quiz","quack","chin","chip","chop","ship","shop","fish","dish","this","moth","bath"],
+  ["ring","king","sing","song","long","bang","wing","pink","sink","bunk","wink","think","thing","shell","chick","rich"],
+  ["frog","crab","stop","swim","flag","drum","trip","clap","plum","snap","grin","slug","spot","step","sled","skip"],
+  ["jump","milk","hand","tent","pond","desk","lamp","nest","help","belt","gift","wind","fist","mask","golf","pump"],
+  ["rain","tail","snail","bee","tree","feet","sheep","night","light","high","boat","coat","goat","road","soap","seed"],
+  ["moon","zoo","book","look","star","farm","car","fork","corn","horn","burn","fur","cow","owl","coin","oil"],
+  ["hammer","letter","ear","hear","near","fair","hair","pair","cloud","out","mouth","boy","toy","joy","sure","summer"],
+  ["cake","game","lake","bike","kite","time","home","bone","rope","cube","tune","slide","smile","snake","stone","plane"],
+  ["the","said","they","was","you","have","come","some","were","there","little","one","what","where","love","friend"],
+  ["rabbit","kitten","garden","picnic","sunset","basket","pencil","button","muffin","puppet","carpet","rocket","dragon","magnet","jacket","window"],
+  ["flower","forest","river","meadow","berry","acorn","petal","leaf","branch","puddle","rainbow","honey","pebble","breeze","blossom","clover"],
+  ["fairy","magic","wand","crystal","castle","sparkle","unicorn","wings","glitter","treasure","moonlight","firefly","twinkle","dragonfly","potion","starlight"],
+  ["beautiful","adventure","butterfly","chocolate","elephant","umbrella","princess","snowflake","strawberry","sunflower","kangaroo","dinosaur","hedgehog","squirrel","mushroom","pumpkin"],
 ];
-
-const GEM_COLOR_NAMES = ["pink", "blue", "gold", "green"];
-
-const ANIMALS = ["owl", "rabbit", "bear", "frog", "panda", "duck"];
-const ANIMAL_NAMES = {
-  owl: "Owl", rabbit: "Rabbit", bear: "Bear",
-  frog: "Frog", panda: "Panda", duck: "Duck",
+// seconds a gem stays out before the fairy flies past it (longer words get a bit more)
+const LIFE      = [26, 22, 20, 20, 19, 18, 18, 17, 17, 16, 16, 16, 15, 16, 15, 15, 17, 17, 18, 19];
+const ON_SCREEN = [ 1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  2,  2,  3,  2,  2,  2,  2];
+const CHALLENGES = {
+  3: { color: "green", count: 3 },  5: { color: "pink", count: 4 },
+  7: { color: "blue", count: 4 },   9: { color: "gold", count: 4 },
+  11: { color: "purple", count: 4 }, 13: { color: "green", count: 5 },
+  15: { color: "pink", count: 5 },  17: { color: "blue", count: 5 },
+  19: { color: "gold", count: 5 },  20: { color: "purple", count: 5 },
 };
-const REWARD_CHANCE = 0.15;
-const STORAGE_KEY = "gemFairySave";
+const LEVELS = WORDS.map((words, i) => ({
+  words,
+  life: LIFE[i],
+  maxOnScreen: ON_SCREEN[i],
+  bagSize: i < 2 ? 8 : 10,
+  challenge: CHALLENGES[i + 1] || null,
+}));
 
-/* ============================== sprites ============================= */
-/* Kenney Animal Pack & Gem Match 3 Set (both CC0) — see CREDITS.md */
-
-function gemImg(color) {
-  return `<img class="stone" src="assets/sprites/gems/${color}.png" alt="${color} gem">`;
-}
-
-function animalImg(kind) {
-  return `<img src="assets/sprites/animals/${kind}.png" alt="${ANIMAL_NAMES[kind]}">`;
-}
-
-/* hand-drawn puppy fairy (Bingo-inspired orange heeler pup with fairy wings) */
-const FAIRY_SVG = `<svg viewBox="0 0 90 100">
-  <!-- fairy wings -->
-  <ellipse cx="25" cy="48" rx="22" ry="13" fill="rgba(255,255,255,.85)" transform="rotate(-25 25 48)"/>
-  <ellipse cx="65" cy="48" rx="22" ry="13" fill="rgba(255,255,255,.85)" transform="rotate(25 65 48)"/>
-  <!-- tail -->
-  <path d="M57 62 Q70 60 73 50" stroke="#d8824f" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <!-- ears -->
-  <polygon points="31,20 23,2 41,11" fill="#d8824f"/>
-  <polygon points="59,20 67,2 49,11" fill="#d8824f"/>
-  <polygon points="32,16 27,5 38,10" fill="#f9e3c8"/>
-  <polygon points="58,16 63,5 52,10" fill="#f9e3c8"/>
-  <!-- body + belly -->
-  <ellipse cx="45" cy="58" rx="13" ry="15" fill="#eda66f"/>
-  <ellipse cx="45" cy="61" rx="8" ry="10" fill="#f9e3c8"/>
-  <!-- tutu -->
-  <path d="M32 64 L27 77 L37 70 L45 79 L53 70 L63 77 L58 64 Z" fill="#f7b961" opacity=".9"/>
-  <!-- legs -->
-  <rect x="37" y="76" width="6" height="15" rx="3" fill="#eda66f"/>
-  <rect x="47" y="76" width="6" height="15" rx="3" fill="#eda66f"/>
-  <!-- head -->
-  <circle cx="45" cy="26" r="17" fill="#eda66f"/>
-  <circle cx="53" cy="19" r="6" fill="#e08e54"/>
-  <ellipse cx="45" cy="32" rx="10" ry="8" fill="#f9e3c8"/>
-  <circle cx="45" cy="28" r="3.4" fill="#3b2b20"/>
-  <path d="M41 35 Q45 38 49 35" stroke="#3b2b20" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-  <circle cx="38" cy="21" r="2.4" fill="#fff"/>
-  <circle cx="52" cy="21" r="2.4" fill="#fff"/>
-  <circle cx="38.4" cy="21.4" r="1.6" fill="#3b2b20"/>
-  <circle cx="52.4" cy="21.4" r="1.6" fill="#3b2b20"/>
-  <!-- arm + wand -->
-  <line x1="56" y1="52" x2="74" y2="40" stroke="#eda66f" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="76" cy="38" r="5" fill="#f7b961"/>
-</svg>`;
-
-/* hiding spots the gems are tucked into */
-const SPOT_SVGS = {
-  bush: `<svg viewBox="0 0 100 46">
-    <circle cx="24" cy="32" r="20" fill="#8fbb73"/>
-    <circle cx="50" cy="26" r="24" fill="#9cc185"/>
-    <circle cx="78" cy="32" r="18" fill="#8fbb73"/>
-    <circle cx="38" cy="20" r="4" fill="#f4a9a0"/>
-    <circle cx="64" cy="24" r="4" fill="#f7b961"/>
-  </svg>`,
-  stump: `<svg viewBox="0 0 100 46">
-    <rect x="26" y="14" width="48" height="28" rx="6" fill="#d9c39e"/>
-    <ellipse cx="50" cy="14" rx="24" ry="9" fill="#efe3cb"/>
-    <ellipse cx="50" cy="14" rx="14" ry="5" fill="#d9c39e"/>
-    <path d="M12 42 Q16 26 22 42 M84 42 Q88 28 94 42" fill="#8fbb73"/>
-  </svg>`,
-  ferns: `<svg viewBox="0 0 100 46">
-    <path d="M20 46 Q14 18 4 14 M20 46 Q22 16 12 6 M20 46 Q30 20 36 16"
-          stroke="#7dab62" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <path d="M78 46 Q72 22 64 18 M78 46 Q82 18 90 8 M78 46 Q90 24 96 20"
-          stroke="#8fbb73" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="50" cy="42" rx="22" ry="7" fill="#9cc185"/>
-  </svg>`,
+const GEMS = {
+  pink:   { hex: 0xff8fc8, css: "#ff8fc8", emoji: "💗" },
+  blue:   { hex: 0x6fc8ff, css: "#6fc8ff", emoji: "💙" },
+  gold:   { hex: 0xffc93c, css: "#ffc93c", emoji: "💛" },
+  green:  { hex: 0x5fdc96, css: "#5fdc96", emoji: "💚" },
+  purple: { hex: 0xb48cff, css: "#b48cff", emoji: "💜" },
 };
-const SPOT_KINDS = Object.keys(SPOT_SVGS);
+const GEM_COLORS = Object.keys(GEMS);
+
+const ANIMALS = {
+  bunny:    { name: "Bunny",    emoji: "🐰" },
+  bear:     { name: "Bear",     emoji: "🐻" },
+  panda:    { name: "Panda",    emoji: "🐼" },
+  frog:     { name: "Frog",     emoji: "🐸" },
+  duck:     { name: "Duckling", emoji: "🐥" },
+  owl:      { name: "Owl",      emoji: "🦉" },
+  fox:      { name: "Fox",      emoji: "🦊" },
+  hedgehog: { name: "Hedgehog", emoji: "🦔" },
+};
+const ANIMAL_KINDS = Object.keys(ANIMALS);
+const REWARD_CHANCE = 0.18;
+
+// world layout: the forest scrolls right-to-left past the fairy
+const FAIRY_X = -4.6;
+const REVEAL_X = 8.2;    // gems pop out of their hiding spots here...
+const SPAWN_X = REVEAL_X + 0.9;   // ...just after the spot sprouts in at the right edge
+const MISS_X = FAIRY_X + 0.7;
+const LANES = [1.1, -1.1, -3.1];
+const WORLD_HALF = 30;
 
 /* ============================ persistence ============================ */
 
+const SAVE_KEY = "gemFairy3d";
 function loadSave() {
+  const fresh = { unlocked: 1, stars: {}, crew: {}, totalGems: 0, muted: false, speak: true };
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const s = JSON.parse(raw);
-      // remap species from saves made before the animal set changed
-      const legacy = { fox: "duck", deer: "panda", boar: "frog", wolf: "owl",
-                       hedgehog: "frog", squirrel: "panda" };
-      s.menagerie = (s.menagerie || [])
-        .map(k => legacy[k] || k)
-        .filter(k => ANIMALS.includes(k));
-      return s;
-    }
-  } catch (e) { /* corrupted save — start fresh */ }
-  return { highestUnlockedLevel: 1, bestResults: {}, menagerie: [], totalGems: 0 };
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (s && typeof s === "object") return { ...fresh, ...s };
+  } catch (e) { /* no storage or corrupted — start fresh */ }
+  return fresh;
 }
-let save = loadSave();
-function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(save)); }
+const save = loadSave();
+function persist() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage unavailable */ }
+}
 
 /* =============================== audio ============================== */
 /* Music: "Cozy Puzzle In-Game 1" by Samza (CC0); SFX: Kenney (CC0) — see CREDITS.md */
 
-const MUTE_KEY = "gemFairyMuted";
-let muted = localStorage.getItem(MUTE_KEY) === "1";
-
 const music = new Audio("assets/audio/music.mp3");
 music.loop = true;
-music.volume = 0.35;
+music.volume = 0.3;
 let musicStarted = false;
-
 function playMusic() {
-  // play() may not return a promise in older engines
   const p = music.play();
-  if (p) p.then(() => { musicStarted = true; }).catch(() => { /* blocked — retry on next gesture */ });
+  if (p) p.then(() => { musicStarted = true; }).catch(() => { /* blocked until a gesture */ });
 }
+function startMusic() { if (!musicStarted && !save.muted) playMusic(); }
 
-function startMusic() {
-  // autoplay policies require a user gesture before audio can start
-  if (musicStarted || muted) return;
-  playMusic();
-}
-
-function setMuted(m) {
-  muted = m;
-  localStorage.setItem(MUTE_KEY, m ? "1" : "0");
-  document.getElementById("muteBtn").textContent = m ? "🔇" : "🔊";
-  if (m) { music.pause(); }
-  else { playMusic(); }
-}
-
-const SFX_FILES = {
-  key:      { src: "assets/audio/key.ogg",      vol: 0.5 },
-  wrong:    { src: "assets/audio/wrong.ogg",    vol: 0.5 },
-  collect:  { src: "assets/audio/collect.ogg",  vol: 0.7 },
-  reward:   { src: "assets/audio/reward.ogg",   vol: 0.8 },
-  complete: { src: "assets/audio/complete.ogg", vol: 0.8 },
-};
 const sfx = {};
-for (const [name, { src, vol }] of Object.entries(SFX_FILES)) {
-  const base = new Audio(src);
+for (const [name, vol] of Object.entries({ key: .45, wrong: .4, collect: .7, reward: .8, complete: .8 })) {
+  const base = new Audio(`assets/audio/${name}.ogg`);
   base.preload = "auto";
   sfx[name] = () => {
-    if (muted) return;
-    const a = base.cloneNode();   // clone so rapid sounds can overlap
+    if (save.muted) return;
+    const a = base.cloneNode();
     a.volume = vol;
     const p = a.play();
-    if (p) p.catch(() => { /* audio unavailable — play silently */ });
+    if (p) p.catch(() => {});
   };
 }
 
-/* ============================ screen flow ============================ */
-
-const $ = (id) => document.getElementById(id);
-function showScreen(id) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  $(id).classList.add("active");
+function say(text) {
+  if (!save.speak || save.muted || !("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.85;
+  u.pitch = 1.3;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
 }
 
-/* ============================== forest ============================== */
+/* ============================ three setup =========================== */
 
-/* Bluey-style gum trees: pale branching trunks, blobby clustered canopies */
-function gumTreeSVG(canopy, shade, trunk) {
-  return `<svg viewBox="0 0 80 120" preserveAspectRatio="none">
-    <path d="M38 120 Q40 84 39 64 Q39 52 30 38 M39 66 Q46 52 56 44"
-          stroke="${trunk}" stroke-width="9" fill="none" stroke-linecap="round"/>
-    <ellipse cx="28" cy="32" rx="20" ry="15" fill="${canopy}"/>
-    <ellipse cx="56" cy="38" rx="17" ry="13" fill="${shade}"/>
-    <ellipse cx="42" cy="20" rx="18" ry="13" fill="${shade}"/>
-    <ellipse cx="40" cy="32" rx="13" ry="10" fill="${canopy}"/>
-  </svg>`;
-}
-function gumTreeTallSVG(canopy, shade, trunk) {
-  return `<svg viewBox="0 0 80 120" preserveAspectRatio="none">
-    <path d="M42 120 Q40 80 42 56 Q43 44 50 34 M42 60 Q34 48 26 44"
-          stroke="${trunk}" stroke-width="8" fill="none" stroke-linecap="round"/>
-    <ellipse cx="52" cy="26" rx="19" ry="14" fill="${canopy}"/>
-    <ellipse cx="26" cy="38" rx="15" ry="11" fill="${shade}"/>
-    <ellipse cx="44" cy="40" rx="14" ry="10" fill="${shade}"/>
-    <ellipse cx="60" cy="40" rx="11" ry="9" fill="${canopy}"/>
-  </svg>`;
+const canvas = document.getElementById("scene");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const FOG_COLOR = 0xf6ecfb;
+scene.fog = new THREE.Fog(FOG_COLOR, 26, 70);
+
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+const lookTarget = new THREE.Vector3(0, 1.5, -1);
+
+scene.add(new THREE.HemisphereLight(0xfff6ff, 0x9bd68a, 1.6));
+const sunLight = new THREE.DirectionalLight(0xfff1dc, 2.2);
+sunLight.position.set(5, 12, 8);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+Object.assign(sunLight.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12, near: 1, far: 40 });
+sunLight.shadow.bias = -0.0005;
+scene.add(sunLight);
+
+// soft two-colour sky dome
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(120, 32, 16),
+  new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new THREE.Color(0x8fd0ff) }, bottom: { value: new THREE.Color(FOG_COLOR) } },
+    vertexShader: `varying float h; void main(){ h = normalize(position).y;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying float h;
+      void main(){ gl_FragColor = vec4(mix(bottom, top, smoothstep(-0.02, 0.45, h)), 1.0); }`,
+  })
+);
+scene.add(sky);
+
+/* toon shading: three flat bands give everything a soft cartoon look */
+const gradientMap = new THREE.DataTexture(new Uint8Array([120, 195, 255]), 3, 1, THREE.RedFormat);
+gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
+gradientMap.needsUpdate = true;
+const matCache = new Map();
+function toon(color) {
+  if (!matCache.has(color)) matCache.set(color, new THREE.MeshToonMaterial({ color, gradientMap }));
+  return matCache.get(color);
 }
 
-function buildForest() {
-  const layers = [
-    { el: $("forestFar"),  count: 16, minW: 70,  maxW: 120, trunk: "#efe3cb",
-      colors: [["#bcd6a0", "#abc98e"], ["#b2cfa9", "#a0c295"]] },
-    { el: $("forestNear"), count: 11, minW: 120, maxW: 190, trunk: "#e8d7b8",
-      colors: [["#8fbb73", "#7dab62"], ["#9cc185", "#86b06e"]] },
-  ];
-  for (const layer of layers) {
-    layer.el.innerHTML = "";
-    for (let i = 0; i < layer.count; i++) {
-      const tree = document.createElement("div");
-      tree.className = "tree";
-      const w = layer.minW + Math.random() * (layer.maxW - layer.minW);
-      const [canopy, shade] = layer.colors[Math.floor(Math.random() * layer.colors.length)];
-      tree.style.width = w + "px";
-      tree.style.height = (w * 1.45) + "px";
-      tree.style.left = (i / layer.count * 250 + Math.random() * 8) + "vw";
-      tree.innerHTML = Math.random() < 0.45
-        ? gumTreeTallSVG(canopy, shade, layer.trunk)
-        : gumTreeSVG(canopy, shade, layer.trunk);
-      layer.el.appendChild(tree);
+const SPHERE = new THREE.SphereGeometry(1, 24, 16);
+function ball(color, r, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1) {
+  const m = new THREE.Mesh(SPHERE, toon(color));
+  m.scale.set(r * sx, r * sy, r * sz);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  return m;
+}
+function cone(color, r, h, x, y, z, rx = 0, rz = 0, seg = 16) {
+  const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), toon(color));
+  m.position.set(x, y, z);
+  m.rotation.set(rx, 0, rz);
+  m.castShadow = true;
+  return m;
+}
+function cyl(color, rt, rb, h, x, y, z, seg = 18) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), toon(color));
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  return m;
+}
+function eye(group, x, y, z, r = 0.055) {
+  group.add(ball(0x3a2c3f, r, x, y, z));
+  const shine = new THREE.Mesh(SPHERE, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  shine.scale.setScalar(r * 0.38);
+  shine.position.set(x + r * 0.35, y + r * 0.4, z + r * 0.75);
+  shine.userData.noOutline = true;
+  group.add(shine);
+}
+
+// inverted-hull outlines make the characters read like a picture book
+const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x6b4f78, side: THREE.BackSide });
+function outline(group, k = 1.07) {
+  const meshes = [];
+  group.traverse(o => { if (o.isMesh && !o.userData.noOutline) meshes.push(o); });
+  for (const m of meshes) {
+    const hull = new THREE.Mesh(m.geometry, OUTLINE);
+    hull.scale.setScalar(k);
+    hull.userData.noOutline = true;
+    m.add(hull);
+  }
+}
+
+/* canvas textures for sparkles (drawn in code so the page works from disk) */
+function canvasTexture(draw, size = 64) {
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  draw(c.getContext("2d"), size);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const starTex = canvasTexture((g, s) => {
+  const h = s / 2;
+  const glow = g.createRadialGradient(h, h, 0, h, h, h);
+  glow.addColorStop(0, "rgba(255,255,255,1)");
+  glow.addColorStop(0.25, "rgba(255,255,255,.6)");
+  glow.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = glow;
+  g.fillRect(0, 0, s, s);
+  g.fillStyle = "#fff";
+  g.beginPath();
+  g.moveTo(h, 2); g.quadraticCurveTo(h, h, s - 2, h); g.quadraticCurveTo(h, h, h, s - 2);
+  g.quadraticCurveTo(h, h, 2, h); g.quadraticCurveTo(h, h, h, 2);
+  g.fill();
+});
+const dotTex = canvasTexture((g, s) => {
+  const h = s / 2;
+  const grad = g.createRadialGradient(h, h, 0, h, h, h);
+  grad.addColorStop(0, "rgba(255,255,255,1)");
+  grad.addColorStop(0.5, "rgba(255,255,255,.5)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, s, s);
+});
+const heartTex = canvasTexture((g, s) => {
+  g.fillStyle = "#fff";
+  g.beginPath();
+  g.moveTo(s / 2, s * 0.85);
+  g.bezierCurveTo(-s * 0.1, s * 0.4, s * 0.2, -s * 0.05, s / 2, s * 0.28);
+  g.bezierCurveTo(s * 0.8, -s * 0.05, s * 1.1, s * 0.4, s / 2, s * 0.85);
+  g.fill();
+});
+
+/* =============================== world ============================== */
+
+// everything that scrolls past lives in `world`
+const world = new THREE.Group();
+scene.add(world);
+const scenery = [];
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(220, 90), toon(0xa6dc86));
+ground.rotation.x = -Math.PI / 2;
+ground.position.z = -20;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// a soft meandering path the gems sit along
+const path = new THREE.Mesh(new THREE.PlaneGeometry(220, 5.6), toon(0xf3e2bf));
+path.rotation.x = -Math.PI / 2;
+path.position.set(0, 0.01, -1);
+path.receiveShadow = true;
+scene.add(path);
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function roundTree() {
+  const g = new THREE.Group();
+  g.add(cyl(0xc9a27e, 0.16, 0.24, 1.8, 0, 0.9, 0));
+  const leaf = pick([0x7ccf72, 0x8fd97c, 0x6cc287]);
+  const leaf2 = pick([0x9be08a, 0x7ccf72]);
+  g.add(ball(leaf, 1.05, 0, 2.3, 0));
+  g.add(ball(leaf2, 0.75, -0.75, 1.95, 0.2));
+  g.add(ball(leaf2, 0.7, 0.75, 2.0, 0.1));
+  g.add(ball(leaf, 0.6, 0.1, 2.95, 0.3));
+  if (Math.random() < 0.6) {
+    for (let i = 0; i < 4; i++) {
+      const a = rand(0, Math.PI * 2);
+      g.add(ball(pick([0xff8a9a, 0xffd36b, 0xffffff]), 0.1, Math.cos(a) * 0.9, rand(1.9, 2.8), 0.75));
     }
   }
-  const ground = $("ground");
-  ground.innerHTML = "";
-  const sprouts = ["🌼", "🍄", "🌷", "🌿", "🌼", "🍄"];
-  for (let i = 0; i < 26; i++) {
-    const s = document.createElement("div");
-    s.className = "sprout";
-    s.style.left = (i / 26 * 250 + Math.random() * 6) + "vw";
-    s.textContent = sprouts[Math.floor(Math.random() * sprouts.length)];
-    ground.appendChild(s);
+  return g;
+}
+function pineTree() {
+  const g = new THREE.Group();
+  g.add(cyl(0xb48a68, 0.13, 0.18, 0.8, 0, 0.4, 0));
+  const c = pick([0x5fbf8a, 0x6ccf95, 0x58b48a]);
+  g.add(cone(c, 1.0, 1.4, 0, 1.25, 0));
+  g.add(cone(c, 0.8, 1.2, 0, 1.95, 0));
+  g.add(cone(c, 0.55, 1.0, 0, 2.6, 0));
+  return g;
+}
+function flower() {
+  const g = new THREE.Group();
+  g.add(cyl(0x6cbf62, 0.025, 0.025, 0.4, 0, 0.2, 0, 6));
+  const petal = pick([0xff9ccf, 0xffffff, 0xb9a3ff, 0xffd166, 0x8fd3ff]);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    g.add(ball(petal, 0.07, Math.cos(a) * 0.08, 0.42, Math.sin(a) * 0.08));
+  }
+  g.add(ball(0xffc93c, 0.055, 0, 0.44, 0));
+  return g;
+}
+function mushroom(scale = 1) {
+  const g = new THREE.Group();
+  g.add(cyl(0xfff3e0, 0.12, 0.15, 0.35, 0, 0.17, 0));
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+                             toon(pick([0xff6f7d, 0xff9a6b, 0xc58cff])));
+  cap.position.y = 0.32;
+  cap.castShadow = true;
+  g.add(cap);
+  for (let i = 0; i < 4; i++) {
+    const a = i * 1.7;
+    g.add(ball(0xffffff, 0.045, Math.cos(a) * 0.18, 0.5, Math.sin(a) * 0.18));
+  }
+  g.scale.setScalar(scale);
+  return g;
+}
+function grassTuft() {
+  const g = new THREE.Group();
+  const c = pick([0x7fcf6c, 0x8edb78, 0x6fc46a]);
+  for (let i = 0; i < 3; i++) g.add(cone(c, 0.06, rand(0.25, 0.4), (i - 1) * 0.07, 0.15, 0, 0, (i - 1) * 0.35, 5));
+  return g;
+}
+function stone() {
+  const m = ball(0xe6d3ad, rand(0.18, 0.3), 0, 0.02, 0, 1, 0.25, 0.8);
+  m.castShadow = false;
+  m.receiveShadow = true;
+  return m;
+}
+
+function addScenery(obj, x, z, scale = 1) {
+  obj.position.set(x, 0, z);
+  obj.scale.multiplyScalar(scale);
+  obj.rotation.y = rand(-0.5, 0.5);
+  world.add(obj);
+  scenery.push(obj);
+}
+function buildScenery() {
+  for (let x = -WORLD_HALF; x < WORLD_HALF; x += rand(2.2, 3.4)) {
+    addScenery(Math.random() < 0.6 ? roundTree() : pineTree(), x, rand(-6.5, -5), rand(0.9, 1.15));
+    addScenery(Math.random() < 0.5 ? roundTree() : pineTree(), x + rand(0.8, 1.6), rand(-12, -8), rand(1.1, 1.5));
+  }
+  for (let i = 0; i < 46; i++) addScenery(flower(), rand(-WORLD_HALF, WORLD_HALF), rand(2.4, 6), rand(0.9, 1.4));
+  for (let i = 0; i < 24; i++) addScenery(flower(), rand(-WORLD_HALF, WORLD_HALF), rand(-4.8, -4.1));
+  for (let i = 0; i < 40; i++) addScenery(grassTuft(), rand(-WORLD_HALF, WORLD_HALF), rand(-4.6, 6));
+  for (let i = 0; i < 10; i++) addScenery(mushroom(rand(0.7, 1.1)), rand(-WORLD_HALF, WORLD_HALF), rand(2.6, 5.5));
+  for (let i = 0; i < 26; i++) addScenery(stone(), rand(-WORLD_HALF, WORLD_HALF), rand(-3.6, 1.6));
+
+  // distant rolling hills and a smiling sun (static backdrop)
+  const hillColors = [0x9fd98a, 0xb5e39a, 0x8fd08a];
+  for (let i = 0; i < 9; i++) {
+    const h = ball(hillColors[i % 3], rand(8, 13), -48 + i * 12 + rand(-3, 3), -5, rand(-34, -28), 1.4, 0.75, 1);
+    h.castShadow = false;
+    scene.add(h);
+  }
+  const sun = new THREE.Group();
+  const basic = (c) => new THREE.MeshBasicMaterial({ color: c, fog: false });
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(3, 40), basic(0xfff2a8));
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(4.2, 40), basic(0xfff8d8));
+  halo.position.z = -0.05;
+  sun.add(halo, disc);
+  for (const x of [-0.9, 0.9]) {
+    const e = new THREE.Mesh(new THREE.CircleGeometry(0.28, 16), basic(0x6b4f78));
+    e.position.set(x, 0.35, 0.02);
+    sun.add(e);
+    const ch = new THREE.Mesh(new THREE.CircleGeometry(0.4, 16), basic(0xffc2c9));
+    ch.position.set(x * 1.5, -0.4, 0.01);
+    sun.add(ch);
+  }
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.1, 8, 24, Math.PI), basic(0x6b4f78));
+  smile.rotation.z = Math.PI;
+  smile.position.set(0, -0.1, 0.02);
+  sun.add(smile);
+  sun.position.set(16, 17, -60);
+  sun.lookAt(0, 3, 12);
+  scene.add(sun);
+  sceneryExtras.sun = sun;
+}
+
+const clouds = [];
+function buildClouds() {
+  for (let i = 0; i < 7; i++) {
+    const c = new THREE.Group();
+    const n = 3 + Math.floor(Math.random() * 3);
+    for (let j = 0; j < n; j++) {
+      const m = ball(0xffffff, rand(0.9, 1.5), j * 1.3 - n * 0.6, rand(-0.2, 0.4), rand(-0.3, 0.3));
+      m.castShadow = false;
+      c.add(m);
+    }
+    c.position.set(rand(-40, 40), rand(9, 14), rand(-40, -25));
+    c.userData.speed = rand(0.25, 0.6);
+    scene.add(c);
+    clouds.push(c);
+  }
+}
+const sceneryExtras = {};
+
+/* ============================== fairy =============================== */
+// a cuddly orange puppy fairy with sparkly wings and a star wand
+
+function buildFairy() {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const fur = 0xf7a86b, cream = 0xfff0d9, dark = 0x3a2c3f;
+
+  body.add(ball(fur, 0.36, 0, 0.18, 0, 1, 1.1, 0.95));
+  body.add(ball(cream, 0.24, 0, 0.15, 0.17, 1, 1.1, 0.6));
+  const tutu = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.32, 20, 1, true), toon(0xffb3dc));
+  tutu.material = tutu.material.clone();
+  tutu.material.side = THREE.DoubleSide;
+  tutu.position.y = 0.02;
+  tutu.castShadow = true;
+  body.add(tutu);
+  body.add(ball(fur, 0.11, -0.15, -0.25, 0.08, 1, 1.3, 1));
+  body.add(ball(fur, 0.11, 0.15, -0.25, 0.08, 1, 1.3, 1));
+  body.add(ball(fur, 0.12, 0, 0.05, -0.38));                       // tail
+
+  const head = new THREE.Group();
+  head.position.y = 0.85;
+  body.add(head);
+  head.add(ball(fur, 0.5, 0, 0, 0, 1.05, 0.95, 0.95));
+  head.add(ball(0xe88c50, 0.2, 0.22, 0.25, 0.25, 1, 0.8, 0.6));    // cute patch
+  head.add(ball(cream, 0.24, 0, -0.14, 0.36, 1.1, 0.75, 0.7));     // muzzle
+  head.add(ball(dark, 0.07, 0, -0.06, 0.53, 1.2, 0.8, 1));          // nose
+  eye(head, -0.19, 0.06, 0.42, 0.075);
+  eye(head, 0.19, 0.06, 0.42, 0.075);
+  head.add(ball(0xff9fb5, 0.07, -0.32, -0.1, 0.33, 1, 0.7, 0.4));   // blush
+  head.add(ball(0xff9fb5, 0.07, 0.32, -0.1, 0.33, 1, 0.7, 0.4));
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 6, 12, Math.PI), toon(dark));
+  mouth.rotation.z = Math.PI;
+  mouth.position.set(0, -0.2, 0.55);
+  head.add(mouth);
+  for (const s of [-1, 1]) {
+    head.add(cone(fur, 0.17, 0.42, s * 0.3, 0.45, -0.02, 0, -s * 0.35, 12));
+    head.add(cone(cream, 0.09, 0.24, s * 0.29, 0.43, 0.06, 0, -s * 0.35, 12));
+  }
+  // flower crown
+  for (let i = 0; i < 5; i++) {
+    const a = -0.9 + i * 0.45;
+    head.add(ball(pick([0xffffff, 0xffd166, 0xff9ccf]), 0.06, Math.sin(a) * 0.45, 0.36 + Math.cos(a) * 0.05, Math.cos(a) * 0.18));
+  }
+
+  // arm + wand
+  const arm = new THREE.Group();
+  arm.position.set(0.3, 0.3, 0.1);
+  body.add(arm);
+  arm.add(ball(fur, 0.09, 0.12, 0.02, 0.08, 1.6, 1, 1));
+  const stick = cyl(0xffffff, 0.025, 0.025, 0.6, 0.28, 0.25, 0.12, 8);
+  stick.rotation.z = -0.5;
+  arm.add(stick);
+  const starShape = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? 0.07 : 0.17, a = (i / 10) * Math.PI * 2 + Math.PI / 2;
+    i ? starShape.lineTo(Math.cos(a) * r, Math.sin(a) * r) : starShape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  const star = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(starShape, { depth: 0.06, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2 }),
+    new THREE.MeshToonMaterial({ color: 0xffd34d, emissive: 0xffb300, emissiveIntensity: 0.35, gradientMap })
+  );
+  star.position.set(0.43, 0.53, 0.1);
+  star.castShadow = true;
+  arm.add(star);
+  const wandTip = new THREE.Object3D();
+  wandTip.position.copy(star.position);
+  arm.add(wandTip);
+
+  outline(root);
+
+  // wings (added after outlining so they stay soft and glassy)
+  const wingMat = new THREE.MeshBasicMaterial({ color: 0xe3f4ff, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false });
+  const wingEdge = new THREE.MeshBasicMaterial({ color: 0xc7b3ff, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0);
+  shape.bezierCurveTo(0.2, 0.8, 1.0, 1.05, 1.0, 0.5);
+  shape.bezierCurveTo(1.0, 0.2, 0.55, 0.05, 0, 0);
+  shape.bezierCurveTo(0.45, -0.05, 0.75, -0.35, 0.55, -0.55);
+  shape.bezierCurveTo(0.35, -0.7, 0.1, -0.35, 0, 0);
+  const wingGeo = new THREE.ShapeGeometry(shape, 16);
+  const wings = [];
+  for (const s of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(s * 0.1, 0.35, -0.3);
+    const w = new THREE.Mesh(wingGeo, wingMat);
+    const edge = new THREE.Mesh(wingGeo, wingEdge);
+    edge.scale.setScalar(1.08);
+    edge.position.z = -0.01;
+    w.scale.x = edge.scale.x = s;
+    edge.scale.x *= 1.08;
+    pivot.add(edge, w);
+    pivot.userData.side = s;
+    body.add(pivot);
+    wings.push(pivot);
+  }
+
+  root.userData = { body, head, arm, wings, wandTip, star };
+  return root;
+}
+
+const fairy = buildFairy();
+fairy.position.set(FAIRY_X, 1.9, 0.6);
+scene.add(fairy);
+const fairyAnim = { spin: 0, celebrate: 0, base: new THREE.Vector3(FAIRY_X, 1.9, 0.6), turn: 0.9 };
+
+/* ============================== animals ============================= */
+
+function buildAnimal(kind, mystery = false) {
+  const g = new THREE.Group();
+  const P = {
+    bunny:    { fur: 0xf8f1ee, belly: 0xffffff },
+    bear:     { fur: 0xc9905e, belly: 0xf5dcb8 },
+    panda:    { fur: 0xffffff, belly: 0xffffff },
+    frog:     { fur: 0x8ed46a, belly: 0xe8f7c4 },
+    duck:     { fur: 0xffe066, belly: 0xfff4b8 },
+    owl:      { fur: 0xb196e0, belly: 0xf4eaff },
+    fox:      { fur: 0xf89c4e, belly: 0xffffff },
+    hedgehog: { fur: 0xf3d9b5, belly: 0xfff0dc },
+  }[kind];
+  const dark = 0x3d3846, pinkN = 0xff9fb5;
+
+  g.add(ball(P.fur, 0.34, 0, 0.34, 0, 1, 0.95, 0.9));
+  g.add(ball(P.belly, 0.22, 0, 0.32, 0.17, 1, 1, 0.6));
+  const footC = kind === "duck" ? 0xffa64d : kind === "panda" ? dark : P.fur;
+  g.add(ball(footC, 0.1, -0.14, 0.06, 0.13, 1, 0.6, 1.3));
+  g.add(ball(footC, 0.1, 0.14, 0.06, 0.13, 1, 0.6, 1.3));
+  const headR = kind === "frog" ? 0.3 : 0.32;
+  g.add(ball(P.fur, headR, 0, 0.82, 0.04, kind === "frog" ? 1.25 : 1, kind === "frog" ? 0.8 : 1, 1));
+
+  const eyes = (y = 0.86, z = 0.31, spread = 0.12, r = 0.055) => { eye(g, -spread, y, z, r); eye(g, spread, y, z, r); };
+  const cheeks = (y = 0.76) => {
+    g.add(ball(pinkN, 0.05, -0.2, y, 0.27, 1, 0.7, 0.5));
+    g.add(ball(pinkN, 0.05, 0.2, y, 0.27, 1, 0.7, 0.5));
+  };
+
+  switch (kind) {
+    case "bunny":
+      for (const s of [-1, 1]) {
+        const ear = ball(P.fur, 0.09, s * 0.11, 1.22, 0, 1, 2.6, 0.7);
+        ear.rotation.z = -s * 0.15;
+        g.add(ear);
+        g.add(ball(pinkN, 0.05, s * 0.115, 1.22, 0.05, 1, 2.3, 0.5));
+      }
+      g.add(ball(0xffffff, 0.1, 0, 0.3, -0.33));
+      g.add(ball(pinkN, 0.035, 0, 0.78, 0.35));
+      eyes(); cheeks();
+      break;
+    case "bear":
+      g.add(ball(P.fur, 0.11, -0.22, 1.08, 0, 1, 1, 0.6));
+      g.add(ball(P.fur, 0.11, 0.22, 1.08, 0, 1, 1, 0.6));
+      g.add(ball(P.belly, 0.13, 0, 0.75, 0.28, 1, 0.8, 0.8));
+      g.add(ball(dark, 0.045, 0, 0.8, 0.39));
+      eyes(0.88); cheeks(0.8);
+      break;
+    case "panda":
+      g.add(ball(dark, 0.11, -0.22, 1.08, 0, 1, 1, 0.6));
+      g.add(ball(dark, 0.11, 0.22, 1.08, 0, 1, 1, 0.6));
+      for (const s of [-1, 1]) {
+        const patch = ball(dark, 0.085, s * 0.13, 0.85, 0.26, 1, 1.25, 0.6);
+        patch.rotation.z = s * 0.5;
+        g.add(patch);
+        g.add(ball(dark, 0.09, s * 0.3, 0.42, 0.12, 1, 1.3, 1));   // arms
+      }
+      g.add(ball(dark, 0.04, 0, 0.77, 0.36));
+      eye(g, -0.13, 0.87, 0.33, 0.035); eye(g, 0.13, 0.87, 0.33, 0.035);
+      cheeks(0.74);
+      break;
+    case "frog":
+      for (const s of [-1, 1]) {
+        g.add(ball(P.fur, 0.12, s * 0.17, 1.03, 0.1));
+        g.add(ball(0xffffff, 0.08, s * 0.17, 1.05, 0.17));
+        eye(g, s * 0.17, 1.05, 0.24, 0.045);
+      }
+      {
+        const smile = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.018, 6, 16, Math.PI), toon(dark));
+        smile.rotation.z = Math.PI;
+        smile.position.set(0, 0.82, 0.31);
+        g.add(smile);
+      }
+      cheeks(0.78);
+      break;
+    case "duck":
+      g.add(ball(0xffa64d, 0.1, 0, 0.76, 0.33, 1.25, 0.45, 1.1));
+      g.add(ball(P.fur, 0.06, 0, 1.15, 0, 1, 1.4, 1));
+      g.add(ball(P.fur, 0.05, 0.05, 1.12, -0.04, 1, 1.3, 1));
+      g.add(ball(P.fur, 0.12, -0.32, 0.4, 0, 0.5, 1, 1.2));
+      g.add(ball(P.fur, 0.12, 0.32, 0.4, 0, 0.5, 1, 1.2));
+      eyes(0.88); cheeks(0.8);
+      break;
+    case "owl":
+      for (const s of [-1, 1]) {
+        g.add(ball(0xffffff, 0.12, s * 0.13, 0.88, 0.25, 1, 1, 0.5));
+        eye(g, s * 0.13, 0.88, 0.31, 0.06);
+        g.add(cone(P.fur, 0.07, 0.2, s * 0.2, 1.15, 0, 0, -s * 0.4, 8));
+        g.add(ball(P.fur, 0.14, s * 0.32, 0.38, 0, 0.45, 1.1, 1));
+      }
+      g.add(cone(0xffb14d, 0.04, 0.1, 0, 0.75, 0.34, Math.PI, 0, 8));
+      break;
+    case "fox":
+      for (const s of [-1, 1]) {
+        g.add(cone(P.fur, 0.11, 0.28, s * 0.18, 1.16, 0, 0, -s * 0.3, 10));
+        g.add(cone(0xffffff, 0.06, 0.15, s * 0.18, 1.13, 0.05, 0, -s * 0.3, 10));
+      }
+      g.add(ball(0xffffff, 0.14, 0, 0.75, 0.25, 1, 0.75, 0.8));
+      g.add(ball(dark, 0.04, 0, 0.78, 0.36));
+      {
+        const tail = ball(P.fur, 0.16, 0.05, 0.36, -0.38, 0.8, 0.8, 1.6);
+        tail.rotation.x = -0.6;
+        g.add(tail);
+        g.add(ball(0xffffff, 0.09, 0.05, 0.52, -0.6));
+      }
+      eyes(0.88); cheeks(0.8);
+      break;
+    case "hedgehog":
+      for (let i = 0; i < 26; i++) {
+        const a = rand(-2.4, 2.4), b = rand(0.1, 1.4);
+        const dir = new THREE.Vector3(Math.sin(a) * Math.sin(b), Math.cos(b), -Math.abs(Math.cos(a)) * Math.sin(b) - 0.2).normalize();
+        const spike = cone(0x9a6b4b, 0.07, 0.24, dir.x * 0.32, 0.55 + dir.y * 0.38, -0.05 + dir.z * 0.32, 0, 0, 6);
+        spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        g.add(spike);
+      }
+      g.add(ball(P.fur, 0.11, 0, 0.76, 0.3, 1, 0.8, 1));
+      g.add(ball(dark, 0.04, 0, 0.78, 0.4));
+      eyes(0.88, 0.3); cheeks(0.78);
+      break;
+  }
+  if (mystery) {
+    const shadowMat = toon(0xb9aed0);
+    g.traverse(o => { if (o.isMesh) o.material = shadowMat; });
+  }
+  outline(g, 1.08);
+  g.userData.kind = kind;
+  return g;
+}
+
+/* ============================ particles ============================= */
+
+const particles = [];
+const spritePool = [];
+function emit({ pos, vel = new THREE.Vector3(), color = 0xffffff, size = 0.3, life = 0.8, gravity = 0, tex = starTex, drag = 1, spin = 0 }) {
+  let s = spritePool.pop();
+  if (!s) s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+  s.material.map = tex;
+  s.material.color.set(color);
+  s.material.opacity = 1;
+  s.material.rotation = rand(0, Math.PI);
+  s.position.copy(pos);
+  s.scale.setScalar(size);
+  scene.add(s);
+  particles.push({ s, vel: vel.clone(), life, max: life, size, gravity, drag, spin });
+}
+function burst(pos, colors, n = 18, power = 3) {
+  for (let i = 0; i < n; i++) {
+    const v = new THREE.Vector3(rand(-1, 1), rand(-0.3, 1.2), rand(-1, 1)).normalize().multiplyScalar(rand(power * 0.4, power));
+    emit({ pos, vel: v, color: pick(colors), size: rand(0.25, 0.5), life: rand(0.6, 1.1), gravity: -3, drag: 0.94, spin: rand(-4, 4) });
+  }
+}
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) {
+      scene.remove(p.s);
+      spritePool.push(p.s);
+      particles.splice(i, 1);
+      continue;
+    }
+    p.vel.y += p.gravity * dt;
+    p.vel.multiplyScalar(Math.pow(p.drag, dt * 60));
+    p.s.position.addScaledVector(p.vel, dt);
+    p.s.material.rotation += p.spin * dt;
+    const k = p.life / p.max;
+    p.s.material.opacity = Math.min(1, k * 2);
+    p.s.scale.setScalar(p.size * (0.5 + 0.5 * k));
   }
 }
 
-function renderTitle() {
-  const row = $("levelRow");
-  row.innerHTML = "";
-  LEVELS.forEach((_, i) => {
-    const n = i + 1;
-    const btn = document.createElement("button");
-    btn.className = "big";
-    const best = save.bestResults[n];
-    btn.innerHTML = `Level ${n}` +
-      (best ? `<span class="best-note">best: ${best.missed} missed</span>` : "");
-    btn.disabled = n > save.highestUnlockedLevel;
-    btn.addEventListener("click", () => startLevel(n));
-    row.appendChild(btn);
-  });
-}
+/* ============================ hiding spots ========================== */
 
-function renderMenagerie() {
-  const grid = $("menagerieGrid");
-  grid.innerHTML = "";
-  if (save.menagerie.length === 0) {
-    grid.innerHTML = `<p class="empty-note">No animals yet — collect gems and friends will find you! 🌿</p>`;
-    return;
+function hideout(kind) {
+  const g = new THREE.Group();
+  let height;
+  if (kind === "bush") {
+    const c = pick([0x78c96a, 0x86d27a]);
+    g.add(ball(c, 0.5, -0.35, 0.4, 0));
+    g.add(ball(c, 0.6, 0.1, 0.55, 0.05));
+    g.add(ball(0x92da82, 0.45, 0.48, 0.38, 0.1));
+    for (let i = 0; i < 5; i++) g.add(ball(pick([0xff7a8a, 0xffd36b]), 0.07, rand(-0.6, 0.7), rand(0.4, 0.9), 0.5));
+    height = 1.05;
+  } else if (kind === "mushroom") {
+    const m = mushroom(2.2);
+    g.add(m);
+    height = 1.15;
+  } else if (kind === "stump") {
+    g.add(cyl(0xc99a72, 0.45, 0.55, 0.6, 0, 0.3, 0));
+    g.add(cyl(0xf2d8b0, 0.45, 0.45, 0.04, 0, 0.61, 0));
+    g.add(cyl(0xd9b48a, 0.25, 0.25, 0.045, 0, 0.615, 0));
+    g.add(ball(0x86d27a, 0.2, -0.5, 0.12, 0.2));
+    height = 0.65;
+  } else {
+    // a big flower
+    g.add(cyl(0x6cbf62, 0.05, 0.06, 0.8, 0, 0.4, 0, 8));
+    const leaf = ball(0x7fcf6c, 0.2, 0.18, 0.3, 0, 1, 0.35, 0.6);
+    leaf.rotation.z = -0.6;
+    g.add(leaf);
+    const c = pick([0xff9ccf, 0xb9a3ff, 0xffb36b]);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      g.add(ball(c, 0.2, Math.cos(a) * 0.24, 0.85 + Math.sin(a) * 0.24, 0, 1, 1, 0.4));
+    }
+    g.add(ball(0xffd166, 0.15, 0, 0.85, 0.05, 1, 1, 0.6));
+    height = 1.35;
   }
-  save.menagerie.forEach(kind => {
-    const pet = document.createElement("div");
-    pet.className = "pet";
-    pet.innerHTML = `${animalImg(kind)}<div>${ANIMAL_NAMES[kind]}</div>`;
-    grid.appendChild(pet);
-  });
+  g.userData.height = height;
+  return g;
+}
+const HIDEOUT_KINDS = ["bush", "mushroom", "stump", "flower"];
+
+/* ============================ HUD helpers =========================== */
+
+const $ = (id) => document.getElementById(id);
+const labelsEl = $("labels");
+
+function gemIcon(color) {
+  return `<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z" fill="${GEMS[color].css}"/>
+    <path d="M2 9h20M8 3 6 9l6 12 6-12-2-6" stroke="#fff" stroke-opacity=".7" stroke-width="1.2" fill="none" stroke-linejoin="round"/></svg>`;
 }
 
-/* ============================= game state ============================ */
+let currentOverlay = "titleScreen";
+function showOverlay(id) {
+  document.querySelectorAll(".overlay").forEach(o => o.classList.toggle("active", o.id === id));
+  currentOverlay = id;
+}
+
+let toastTimer = null;
+function toast(html) {
+  const t = $("toast");
+  t.innerHTML = html;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2300);
+}
+
+let hintTimer = null;
+function hint(text, ms = 4000) {
+  const h = $("hint");
+  h.textContent = text;
+  h.classList.add("show");
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => h.classList.remove("show"), ms);
+}
+
+/* ============================= game state =========================== */
+
+let mode = "title";          // title | play | celebrate | crew
+let paused = false;
+let worldSpeed = 0;
+let clock = 0;
 
 const game = {
-  running: false,
-  levelNum: 1,
-  level: null,
-  collected: 0,
-  missed: 0,
-  greenCount: 0,
-  gems: [],           // active gem objects
-  hideouts: [],       // hiding spots scattered on the forest floor
-  target: null,       // gem currently being typed
-  newAnimals: [],     // animals earned this level
-  nextGemId: 1,
-  rafId: null,
-  fairyStep: 0,
+  levelNum: 1, level: null,
+  gems: [],                  // every gem whose hiding spot is still in the world
+  target: null,
+  pending: [],               // seconds until each queued gem appears
+  bag: [],                   // colours in the bag
+  collected: 0, missed: 0,
+  newFriends: [],
+  lastLane: -1,
 };
 
 function startLevel(n) {
+  clearGems();
   game.levelNum = n;
   game.level = LEVELS[n - 1];
+  game.level.speed = (REVEAL_X - MISS_X) / game.level.life;
+  game.target = null;
+  game.pending = [];
+  game.bag = [];
   game.collected = 0;
   game.missed = 0;
-  game.greenCount = 0;
+  game.newFriends = [];
+  for (let i = 0; i < game.level.maxOnScreen; i++) game.pending.push(0.8 + i * Math.min(4, game.level.life * 0.3));
+  mode = "play";
+  paused = false;
+  fairyAnim.celebrate = 0;
+  showOverlay(null);
+  $("hud").classList.add("active");
+  $("crewBar").classList.remove("active");
+  $("levelPill").textContent = `Level ${n}`;
+  renderBag();
+  renderChallenge();
+  showKeyboard(true);
+  layoutCrew();
+  if (n === 1 && save.totalGems === 0) setTimeout(() => hint("Type the letters on a gem to catch it! ✨", 6000), 1500);
+}
+
+function clearGems() {
+  for (const gem of game.gems) {
+    world.remove(gem.root);
+    if (gem.mesh.parent) gem.mesh.parent.remove(gem.mesh);
+    gem.label.remove();
+  }
   game.gems = [];
   game.target = null;
-  game.newAnimals = [];
-  game.fairyStep = 0;
-  game.running = true;
-
-  $("playArea").innerHTML = "";
-  $("rewardToast").className = "";
-  $("completeOverlay").classList.remove("active");
-  $("levelPill").textContent = `Level ${n}`;
-  const ch = game.level.challenge;
-  $("challengePill").style.display = ch ? "" : "none";
-  if (ch) updateChallengePill();
-  buildBag();
-  updateHud();
-  buildHideouts();
-  placeFairy();
-  showScreen("gameScreen");
-
-  for (let i = 0; i < game.level.maxOnScreen; i++) spawnGem(i * 400);
-  if (game.rafId) cancelAnimationFrame(game.rafId);
-  game.rafId = requestAnimationFrame(tick);
 }
 
-function stopLevel() {
-  game.running = false;
-  if (game.rafId) cancelAnimationFrame(game.rafId);
-  game.rafId = null;
-}
-
-/* ------------------------------ fairy ------------------------------ */
-
-function placeFairy() {
-  let fairy = $("fairy");
-  if (!fairy) {
-    fairy = document.createElement("div");
-    fairy.id = "fairy";
-    fairy.innerHTML = FAIRY_SVG;
-    $("playArea").appendChild(fairy);
-  }
-  fairy.style.left = "6%";
-  fairy.style.top = "22%";
-  setInterval(() => {
-    if (!game.running) return;
-    const f = $("fairy");
-    if (!f) return;
-    const s = document.createElement("div");
-    s.className = "sparkle";
-    s.style.left = (f.offsetLeft + 10 + Math.random() * 30) + "px";
-    s.style.top = (f.offsetTop + 50 + Math.random() * 30) + "px";
-    $("playArea").appendChild(s);
-    setTimeout(() => s.remove(), 900);
-  }, 450);
-}
-
-function fairyStepForward() {
-  // fairy nudges right a little each gem; the forest slides past in parallax
-  game.fairyStep++;
-  const fairy = $("fairy");
-  const pct = 6 + Math.min(game.fairyStep, 10) * 1.5;
-  fairy.style.left = pct + "%";
-  $("forestFar").style.transform  = `translateX(${-game.fairyStep * 10}px)`;
-  $("forestNear").style.transform = `translateX(${-game.fairyStep * 26}px)`;
-  $("ground").style.transform     = `translateX(${-game.fairyStep * 34}px)`;
+function goToMenu() {
+  clearGems();
+  mode = "title";
+  paused = false;
+  $("hud").classList.remove("active");
+  $("crewBar").classList.remove("active");
+  showKeyboard(false);
+  clearCrewShowcase();
+  layoutCrew();
+  showOverlay("titleScreen");
 }
 
 /* ------------------------------- gems ------------------------------- */
 
+function liveGems() { return game.gems.filter(g => g.state === "waiting" || g.state === "rising" || g.state === "active"); }
+
 function pickWord() {
-  const inUse = game.gems.map(g => g.word);
-  const usedFirst = game.gems.map(g => g.word[0]);
-  const pool = game.level.words.filter(w =>
-    !inUse.includes(w) && !usedFirst.includes(w[0]) // distinct first letters for targeting
-  );
-  const list = pool.length ? pool : game.level.words.filter(w => !inUse.includes(w));
-  return list[Math.floor(Math.random() * list.length)];
+  const live = liveGems();
+  const inUse = live.map(g => g.word);
+  const firsts = live.map(g => g.word[0]);
+  const words = game.level.words;
+  let pool = words.filter(w => !inUse.includes(w) && !firsts.includes(w[0]));   // distinct first letters
+  if (!pool.length) pool = words.filter(w => !inUse.includes(w));
+  return pick(pool);
 }
 
 function pickColor() {
-  const names = GEM_COLOR_NAMES;
   const ch = game.level.challenge;
-  if (ch && Math.random() < 0.4) return ch.color;
-  return names[Math.floor(Math.random() * names.length)];
+  if (!ch) return pick(GEM_COLORS);
+  // make sure there are always enough challenge gems to finish the bag
+  const have = game.bag.filter(c => c === ch.color).length;
+  const coming = liveGems().filter(g => g.color === ch.color).length;
+  const needed = ch.count - have - coming;
+  const slotsLeft = game.level.bagSize - game.bag.length - liveGems().length;
+  if (needed > 0 && (needed >= slotsLeft || game.bag.length >= game.level.bagSize)) return ch.color;
+  return Math.random() < 0.35 ? ch.color : pick(GEM_COLORS);
 }
 
-function buildHideouts() {
-  game.hideouts = [];
-  const count = Math.max(game.level.maxOnScreen + 3, 5);
-  for (let i = 0; i < count; i++) {
-    const leftPct = 14 + (i + 0.5) * (72 / count) + (Math.random() * 6 - 3);
-    const bottomPct = 13 + Math.random() * 8;
-    const kind = SPOT_KINDS[Math.floor(Math.random() * SPOT_KINDS.length)];
-    const el = document.createElement("div");
-    el.className = "hideout";
-    el.style.left = leftPct + "%";
-    el.style.bottom = bottomPct + "%";
-    el.innerHTML = SPOT_SVGS[kind];
-    $("playArea").appendChild(el);
-    game.hideouts.push({ el, leftPct, bottomPct, occupied: false });
-  }
+const GEM_GEO = new THREE.OctahedronGeometry(0.42, 0);
+
+function spawnGem() {
+  const word = pickWord();
+  const color = pickColor();
+  let lane;
+  do { lane = Math.floor(Math.random() * LANES.length); } while (lane === game.lastLane && LANES.length > 1);
+  game.lastLane = lane;
+
+  const root = new THREE.Group();
+  root.position.set(SPAWN_X, 0, LANES[lane]);
+  const spot = hideout(pick(HIDEOUT_KINDS));
+  spot.rotation.y = rand(-0.3, 0.3);
+  spot.scale.setScalar(0.01);
+  spot.userData.grow = 0;
+  root.add(spot);
+
+  const mat = new THREE.MeshPhongMaterial({
+    color: GEMS[color].hex, emissive: GEMS[color].hex, emissiveIntensity: 0.25,
+    shininess: 120, specular: 0xffffff, flatShading: true,
+  });
+  const mesh = new THREE.Mesh(GEM_GEO, mat);
+  mesh.scale.set(1, 1.3, 1);
+  mesh.castShadow = true;
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: GEMS[color].hex, transparent: true, opacity: 0.6, depthWrite: false }));
+  glow.scale.set(1.8, 1.4, 1);
+  mesh.add(glow);
+  const restY = spot.userData.height + 0.55;
+  mesh.position.set(0, spot.userData.height * 0.5, 0.05);
+  mesh.visible = false;
+  root.add(mesh);
+  world.add(root);
+
+  const label = document.createElement("div");
+  label.className = "label";
+  label.style.opacity = "0";
+  label.innerHTML = `<div class="word"></div><div class="timer"><i></i></div>`;
+  labelsEl.appendChild(label);
+
+  const gem = { word, color, typed: 0, root, spot, mesh, mat, label, restY, state: "waiting", t: 0, wiggle: 0, phase: rand(0, 6) };
+  game.gems.push(gem);
+  renderWord(gem);
 }
 
-function pickFreeHideout() {
-  const free = game.hideouts.filter(h => !h.occupied);
-  return free[Math.floor(Math.random() * free.length)] || null;
+function renderWord(gem) {
+  gem.label.querySelector(".word").innerHTML = gem.word.split("").map((ch, i) =>
+    `<span class="${i < gem.typed ? "done" : i === gem.typed && game.target === gem ? "next" : ""}">${ch}</span>`).join("");
+  gem.label.classList.toggle("target", game.target === gem);
 }
 
-function spawnGem(delay = 0) {
-  setTimeout(() => {
-    if (!game.running) return;
-    const hideout = pickFreeHideout();
-    if (!hideout) { spawnGem(600); return; } // all spots busy — try again shortly
-    hideout.occupied = true;
-    const word = pickWord();
-    const color = pickColor();
-    const id = game.nextGemId++;
+function easeOutBack(t) { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
 
-    const el = document.createElement("div");
-    el.className = "gem";
-    el.style.left = hideout.leftPct + "%";
-    el.style.bottom = `calc(${hideout.bottomPct}% - 6px)`;
-    const r = 36, circ = 2 * Math.PI * r;
-    el.innerHTML = `
-      <div class="word"></div>
-      <div class="nest">
-        <svg class="timer-ring" viewBox="0 0 76 76">
-          <circle class="track" cx="38" cy="38" r="${r}"/>
-          <circle class="left" cx="38" cy="38" r="${r}" stroke-dasharray="${circ}" stroke-dashoffset="0"/>
-        </svg>
-        ${gemImg(color)}
-      </div>`;
-    $("playArea").appendChild(el);
+const tmpV = new THREE.Vector3();
+const tmpV2 = new THREE.Vector3();
 
-    const gem = { id, word, color, typed: 0, el, hideout, revealed: false,
-                  born: 0, life: game.level.timePerGem, ringCirc: circ };
-    game.gems.push(gem);
-    renderGemWord(gem);
-
-    // a moment later the hiding spot rustles and the fairy discovers the gem
-    setTimeout(() => {
-      if (!game.running || !game.gems.includes(gem)) return;
-      rustleSpot(gem);
-      gem.el.classList.add("revealed");
-      discoverySparkles(gem.el);
-      gem.revealed = true;
-      gem.born = performance.now();
-    }, 550);
-  }, delay);
-}
-
-function rustleSpot(gem) {
-  const spot = gem.hideout.el;
-  spot.classList.remove("rustle");
-  void spot.offsetWidth; // restart animation
-  spot.classList.add("rustle");
-}
-
-function discoverySparkles(gemEl) {
-  for (let i = 0; i < 7; i++) {
-    const s = document.createElement("div");
-    s.className = "sparkle";
-    s.style.left = (gemEl.offsetLeft + 25 + Math.random() * 60) + "px";
-    s.style.top = (gemEl.offsetTop + 10 + Math.random() * 70) + "px";
-    s.style.animationDelay = (Math.random() * .25) + "s";
-    $("playArea").appendChild(s);
-    setTimeout(() => s.remove(), 1300);
-  }
-}
-
-function renderGemWord(gem) {
-  const wordEl = gem.el.querySelector(".word");
-  wordEl.innerHTML = gem.word.split("").map((ch, i) =>
-    `<span class="${i < gem.typed ? "done" : ""}">${ch}</span>`).join("");
-  gem.el.classList.toggle("target", game.target === gem);
-}
-
-function tick(now) {
-  if (!game.running) return;
+function updateGems(dt) {
   for (const gem of [...game.gems]) {
-    if (!gem.revealed) continue;
-    const elapsed = now - gem.born;
-    const frac = Math.min(elapsed / gem.life, 1);
-    const ring = gem.el.querySelector("circle.left");
-    if (ring) ring.style.strokeDashoffset = (gem.ringCirc * frac).toFixed(1);
-    if (frac >= 1) missGem(gem);
+    gem.root.position.x -= worldSpeed * dt;
+    gem.t += dt;
+    const m = gem.mesh;
+
+    if (gem.state === "waiting" && gem.root.position.x <= REVEAL_X) {
+      gem.state = "rising";
+      gem.t = 0;
+      m.visible = true;
+      gem.label.style.opacity = "1";
+      gem.spot.userData.rustle = 0.5;
+    }
+    if (gem.state === "rising") {
+      const k = Math.min(gem.t / 0.6, 1);
+      m.position.y = THREE.MathUtils.lerp(gem.spot.userData.height * 0.5, gem.restY, easeOutBack(k));
+      m.scale.set(0.3 + 0.7 * k, (0.3 + 0.7 * k) * 1.3, 0.3 + 0.7 * k);
+      if (k >= 1) { gem.state = "active"; sparkleAt(m, GEMS[gem.color].hex, 6); }
+    }
+    if (gem.state === "active") {
+      m.position.y = gem.restY + Math.sin(clock * 2.5 + gem.phase) * 0.08;
+      if (gem.root.position.x <= MISS_X) missGem(gem);
+    }
+    if (gem.state === "rising" || gem.state === "active") {
+      m.rotation.y += dt * 1.6;
+      gem.mat.emissiveIntensity = 0.25 + 0.5 * (gem.typed / gem.word.length) + 0.08 * Math.sin(clock * 5 + gem.phase);
+      const prog = THREE.MathUtils.clamp((REVEAL_X - gem.root.position.x) / (REVEAL_X - MISS_X), 0, 1);
+      const bar = gem.label.querySelector(".timer i");
+      bar.style.transform = `scaleX(${1 - prog})`;
+      bar.style.background = prog > 0.75 ? "#ffb36b" : "";
+    }
+    if (gem.state === "miss") {
+      const k = Math.min(gem.t / 0.5, 1);
+      m.position.y = THREE.MathUtils.lerp(gem.restY, gem.spot.userData.height * 0.4, k);
+      m.scale.setScalar(1 - 0.8 * k);
+      if (k >= 1) m.visible = false;
+    }
+    if (gem.state === "collect") {
+      // swoop from the hiding spot into the fairy's wand
+      const k = Math.min(gem.t / 0.5, 1);
+      fairy.userData.wandTip.getWorldPosition(tmpV);
+      m.position.lerpVectors(gem.from, tmpV, k * k);
+      m.position.y += Math.sin(k * Math.PI) * 1.2;
+      m.scale.setScalar(1 - 0.7 * k);
+      m.rotation.y += dt * 12;
+      if (k >= 1) {
+        scene.remove(m);
+        burst(tmpV, [GEMS[gem.color].hex, 0xffffff, 0xffe27a], 22, 3.5);
+        gem.state = "done";
+      }
+    }
+    if (gem.wiggle > 0) {
+      gem.wiggle -= dt;
+      m.rotation.z = Math.sin(gem.wiggle * 40) * 0.35 * (gem.wiggle / 0.4);
+    } else if (gem.state !== "collect") m.rotation.z = 0;
+
+    // hiding spot sprouts up, then rustles when its gem pops in or out
+    if (gem.spot.userData.grow < 1) {
+      gem.spot.userData.grow = Math.min(1, gem.spot.userData.grow + dt * 2.5);
+      gem.spot.scale.setScalar(Math.max(0.01, easeOutBack(gem.spot.userData.grow)));
+    } else if (gem.spot.userData.rustle > 0) {
+      gem.spot.userData.rustle -= dt;
+      const r = gem.spot.userData.rustle;
+      gem.spot.scale.set(1 + Math.sin(r * 30) * 0.08 * r * 2, 1 - Math.sin(r * 30) * 0.08 * r * 2, 1);
+    }
+
+    if (gem.root.position.x < -WORLD_HALF) {
+      world.remove(gem.root);
+      gem.label.remove();
+      game.gems.splice(game.gems.indexOf(gem), 1);
+    }
   }
-  game.rafId = requestAnimationFrame(tick);
 }
 
-function removeGem(gem) {
-  game.gems = game.gems.filter(g => g !== gem);
+function sparkleAt(obj, color, n) {
+  obj.getWorldPosition(tmpV2);
+  for (let i = 0; i < n; i++) {
+    emit({
+      pos: tmpV2.clone().add(new THREE.Vector3(rand(-0.5, 0.5), rand(-0.4, 0.6), rand(-0.3, 0.3))),
+      vel: new THREE.Vector3(rand(-0.4, 0.4), rand(0.4, 1.2), 0),
+      color: pick([color, 0xffffff]), size: rand(0.2, 0.35), life: rand(0.5, 0.9),
+    });
+  }
+}
+
+function missGem(gem, counted = true) {
+  gem.state = "miss";
+  gem.t = 0;
+  gem.spot.userData.rustle = 0.5;
+  gem.label.style.opacity = "0";
   if (game.target === gem) game.target = null;
-}
-
-function missGem(gem) {
-  removeGem(gem);
-  // the gem slips back into its hiding spot
-  rustleSpot(gem);
-  gem.el.classList.remove("revealed");
-  gem.el.classList.add("missed");
-  setTimeout(() => { gem.el.remove(); gem.hideout.occupied = false; }, 1400);
+  if (!counted) return;
   game.missed++;
-  if (!levelGoalsMet()) spawnGem(700);
+  game.pending.push(0.6);
 }
 
 function collectGem(gem) {
-  removeGem(gem);
+  gem.state = "collect";
+  gem.t = 0;
+  gem.from = gem.mesh.getWorldPosition(new THREE.Vector3());
+  scene.attach(gem.mesh);
+  gem.mesh.position.copy(gem.from);
+  gem.label.style.opacity = "0";
+  gem.spot.userData.rustle = 0.4;
+  game.target = null;
+  liveGems().forEach(renderWord);
+
   sfx.collect();
+  say(gem.word);
+  fairyAnim.spin = 1;
   game.collected++;
-  if (gem.color === "green") game.greenCount++;
   save.totalGems++;
 
-  // fly into the bag (the hideout stays behind, ready for the next gem)
-  gem.hideout.occupied = false;
-  const bagRect = $("bag").getBoundingClientRect();
-  gem.el.classList.add("collected");
-  gem.el.style.top = gem.el.offsetTop + "px";
-  gem.el.style.bottom = "auto";
-  void gem.el.offsetWidth; // settle position before the flight transition
-  gem.el.style.left = (bagRect.left + bagRect.width / 2) + "px";
-  gem.el.style.top = (bagRect.top - 30) + "px";
-  gem.el.style.transform = "scale(.35)";
-  gem.el.querySelector(".word").style.opacity = "0";
-  setTimeout(() => gem.el.remove(), 700);
-
-  fairyStepForward();
-  fillBagSlot(game.collected, gem.color);
-  updateHud();
-  if (game.level.challenge) updateChallengePill();
-
-  // chance of an animal friend
-  if (Math.random() < REWARD_CHANCE) {
-    const kind = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
-    game.newAnimals.push(kind);
-    save.menagerie.push(kind);
-    showRewardToast(kind);
-    sfx.reward();
+  const size = game.level.bagSize;
+  const ch = game.level.challenge;
+  if (game.bag.length < size) game.bag.push(gem.color);
+  else if (ch && gem.color === ch.color) {
+    // bag is full: swap out a gem that isn't the colour we're hunting for
+    const i = game.bag.findIndex(c => c !== ch.color);
+    if (i >= 0) game.bag[i] = gem.color;
   }
+  setTimeout(() => { renderBag(); renderChallenge(); }, 450);
+
+  if (Math.random() < REWARD_CHANCE) setTimeout(() => newFriend(gem.from), 650);
   persist();
 
-  if (levelGoalsMet()) {
-    stopLevel();
-    setTimeout(finishLevel, 1100);
+  if (levelDone()) {
+    mode = "celebrate";
+    showKeyboard(false);
+    for (const g of liveGems()) missGem(g, false);   // leftovers just hide again, no penalty
+    setTimeout(celebrate, 700);
   } else {
-    spawnGem(500);
+    game.pending.push(0.7);
   }
 }
 
-function levelGoalsMet() {
+function levelDone() {
   const ch = game.level.challenge;
-  return game.collected >= game.level.gemTarget &&
-         (!ch || game.greenCount >= ch.count);
+  return game.bag.length >= game.level.bagSize &&
+         (!ch || game.bag.filter(c => c === ch.color).length >= ch.count);
 }
 
-/* ------------------------------ bag/hud ----------------------------- */
-
-function buildBag() {
-  const bag = $("bag");
-  bag.innerHTML = "🎒";
-  for (let i = 0; i < game.level.gemTarget; i++) {
-    const slot = document.createElement("div");
-    slot.className = "slot";
-    slot.dataset.n = i + 1;
-    bag.appendChild(slot);
+function renderBag() {
+  const size = game.level.bagSize;
+  let html = "🎒";
+  for (let i = 0; i < size; i++) {
+    html += `<div class="slot">${game.bag[i] ? gemIcon(game.bag[i]) : ""}</div>`;
   }
+  $("bag").innerHTML = html;
 }
 
-function fillBagSlot(n, color) {
-  const slot = $("bag").querySelector(`.slot[data-n="${n}"]`);
-  if (slot) slot.innerHTML = gemImg(color);
-}
-
-function updateHud() {
-  $("gemPill").textContent = `Gems ${game.collected} / ${game.level.gemTarget}`;
-}
-
-function updateChallengePill() {
+function renderChallenge() {
   const ch = game.level.challenge;
-  $("challengePill").textContent =
-    `💚 Green gems ${Math.min(game.greenCount, ch.count)} / ${ch.count}`;
+  const pill = $("challengePill");
+  pill.style.display = ch ? "" : "none";
+  if (!ch) return;
+  const have = Math.min(game.bag.filter(c => c === ch.color).length, ch.count);
+  pill.innerHTML = `${GEMS[ch.color].emoji} ${ch.color} gems ${have} / ${ch.count}`;
+  pill.classList.toggle("done", have >= ch.count);
 }
 
-function showRewardToast(kind) {
-  const toast = $("rewardToast");
-  toast.innerHTML = `${animalImg(kind)}<div class="msg">A ${ANIMAL_NAMES[kind].toLowerCase()} joined your crew!</div>`;
-  toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 2200);
-}
+/* ------------------------------ typing ------------------------------ */
 
-/* --------------------------- level complete ------------------------- */
+function handleLetter(letter) {
+  if (mode !== "play" || paused) return;
+  const live = liveGems().filter(g => g.state !== "waiting");
+  if (game.target && !live.includes(game.target)) game.target = null;
 
-function finishLevel() {
-  sfx.complete();
-  const n = game.levelNum;
-  // unlock next level and keep the best (fewest-missed) result
-  save.highestUnlockedLevel = Math.max(save.highestUnlockedLevel, Math.min(n + 1, LEVELS.length));
-  const prev = save.bestResults[n];
-  if (!prev || game.missed < prev.missed) {
-    save.bestResults[n] = { gems: game.collected, missed: game.missed };
-  }
-  persist();
-
-  $("completeStats").innerHTML =
-    `💎 Gems collected: <b>${game.collected}</b><br>` +
-    `🍂 Gems that stayed hidden: <b>${game.missed}</b>` +
-    (game.level.challenge ? `<br>💚 Green gems: <b>${game.greenCount}</b>` : "");
-  $("completeAnimals").innerHTML = game.newAnimals.length
-    ? `New friends! ${game.newAnimals.map(k => animalImg(k)).join("")}`
-    : "";
-  $("nextBtn").style.display = n < LEVELS.length ? "" : "none";
-  $("completeOverlay").classList.add("active");
-}
-
-/* ============================== typing ============================== */
-
-window.addEventListener("keydown", (e) => {
-  if (!game.running) return;
-  if (e.key.length !== 1 || !/[a-z]/i.test(e.key)) return;
-  const letter = e.key.toLowerCase();
-
-  if (game.target) {
-    tryLetter(game.target, letter);
-    return;
-  }
-  // no target yet — first letter picks a gem
-  const match = game.gems.find(g => g.revealed && g.word[0] === letter);
-  if (match) {
+  if (!game.target) {
+    // first letter chooses a gem — the one closest to the fairy wins ties
+    const match = live.filter(g => g.word[0] === letter).sort((a, b) => a.root.position.x - b.root.position.x)[0];
+    if (!match) {
+      sfx.wrong();
+      live.forEach(wiggle);
+      return;
+    }
     game.target = match;
-    tryLetter(match, letter);
-    game.gems.forEach(renderGemWord);
-  } else {
-    sfx.wrong();
-    game.gems.forEach(g => wiggle(g));
   }
-});
-
-function tryLetter(gem, letter) {
+  const gem = game.target;
   if (gem.word[gem.typed] === letter) {
     gem.typed++;
     sfx.key();
-    renderGemWord(gem);
+    zap(gem);
     if (gem.typed === gem.word.length) collectGem(gem);
+    else live.forEach(renderWord);
   } else {
     sfx.wrong();
-    wiggle(gem); // no progress lost — gentle nudge only
+    wiggle(gem);       // no progress lost — just a gentle nudge
   }
 }
 
-function wiggle(gem) {
-  gem.el.classList.remove("wiggle");
-  void gem.el.offsetWidth; // restart animation
-  gem.el.classList.add("wiggle");
+function releaseTarget() {
+  if (!game.target) return;
+  game.target.typed = 0;
+  game.target = null;
+  liveGems().forEach(renderWord);
 }
 
-/* ============================== wiring ============================== */
+function wiggle(gem) {
+  gem.wiggle = 0.4;
+  gem.label.classList.remove("wiggle");
+  void gem.label.offsetWidth;
+  gem.label.classList.add("wiggle");
+}
 
-$("playBtn").addEventListener("click", () =>
-  startLevel(Math.min(save.highestUnlockedLevel, LEVELS.length)));
-$("menagerieBtn").addEventListener("click", () => {
-  renderMenagerie();
-  showScreen("menagerieScreen");
+// a little trail of stars from the wand to the gem on every right letter
+function zap(gem) {
+  fairy.userData.wandTip.getWorldPosition(tmpV);
+  gem.mesh.getWorldPosition(tmpV2);
+  for (let i = 0; i < 6; i++) {
+    const p = tmpV.clone().lerp(tmpV2, i / 6);
+    p.y += Math.sin((i / 6) * Math.PI) * 0.6;
+    emit({ pos: p, vel: new THREE.Vector3(0, rand(0.2, 0.6), 0), color: pick([0xffe27a, GEMS[gem.color].hex]), size: 0.28, life: 0.35 + i * 0.04 });
+  }
+  sparkleAt(gem.mesh, GEMS[gem.color].hex, 3);
+}
+
+window.addEventListener("keydown", (e) => {
+  startMusic();
+  if (e.key === "Escape") { togglePause(); return; }
+  if (e.key === "Backspace") { releaseTarget(); e.preventDefault(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key.length === 1 && /[a-z]/i.test(e.key)) handleLetter(e.key.toLowerCase());
 });
-$("menagerieBackBtn").addEventListener("click", () => {
-  renderTitle();
-  showScreen("titleScreen");
+
+/* ------------------------------ friends ----------------------------- */
+
+const crew = [];             // animal meshes following the fairy
+const CREW_VISIBLE = 10;
+
+function newFriend(fromPos) {
+  const kind = pick(ANIMAL_KINDS);
+  const isNew = !save.crew[kind];
+  save.crew[kind] = (save.crew[kind] || 0) + 1;
+  game.newFriends.push(kind);
+  persist();
+  sfx.reward();
+  const a = ANIMALS[kind];
+  toast(`${a.emoji} ${isNew ? "A new friend!" : "Another"} ${a.name} joined your crew!`);
+  say(`A ${a.name.toLowerCase()} joined your crew!`);
+  const mesh = addCrewMember(kind);
+  mesh.position.set(fromPos.x, 0, fromPos.z);
+  burst(new THREE.Vector3(fromPos.x, 0.8, fromPos.z), [0xff9ccf, 0xffffff, 0xffd166], 14, 2.5);
+  for (let i = 0; i < 5; i++) {
+    emit({ pos: new THREE.Vector3(fromPos.x + rand(-0.4, 0.4), 1.2, fromPos.z), vel: new THREE.Vector3(0, rand(0.8, 1.4), 0),
+           color: 0xff8fc8, size: 0.35, life: 1.2, tex: heartTex });
+  }
+  layoutCrew();
+}
+
+function addCrewMember(kind) {
+  const m = buildAnimal(kind);
+  m.userData.phase = rand(0, 6);
+  m.userData.target = new THREE.Vector3();
+  scene.add(m);
+  crew.push(m);
+  if (crew.length > CREW_VISIBLE) {
+    const old = crew.shift();
+    scene.remove(old);
+  }
+  return m;
+}
+
+function seedCrew() {
+  // bring back a few friends from earlier play sessions
+  const owned = [];
+  for (const [kind, n] of Object.entries(save.crew)) for (let i = 0; i < Math.min(n, 3); i++) owned.push(kind);
+  owned.sort(() => Math.random() - 0.5).slice(0, 6).forEach(k => {
+    const m = addCrewMember(k);
+    m.position.set(-12, 0, 3);
+  });
+  layoutCrew();
+}
+
+function layoutCrew() {
+  // two cosy rows hopping along beneath and behind the fairy
+  crew.forEach((m, i) => {
+    const idx = crew.length - 1 - i;
+    m.userData.target.set(FAIRY_X + 0.9 - Math.floor(idx / 2) * 1.05, 0, idx % 2 ? 3.4 : 2.3);
+    m.visible = mode !== "crew";
+  });
+}
+
+function updateCrew(dt) {
+  const walking = worldSpeed > 0.1 || mode === "title";
+  for (const m of crew) {
+    m.position.x += (m.userData.target.x - m.position.x) * Math.min(1, dt * 2.5);
+    m.position.z += (m.userData.target.z - m.position.z) * Math.min(1, dt * 2.5);
+    const hop = Math.abs(Math.sin(clock * 6 + m.userData.phase));
+    m.position.y = walking || mode === "celebrate" ? hop * (mode === "celebrate" ? 0.45 : 0.18) : 0;
+    m.rotation.y = mode === "celebrate" ? Math.sin(clock * 3 + m.userData.phase) * 0.6 : 0.85;
+  }
+}
+
+/* ---------------------------- crew showcase ------------------------- */
+
+let showcase = [];
+function openCrew() {
+  mode = "crew";
+  showOverlay(null);
+  $("crewBar").classList.add("active");
+  layoutCrew();
+  const total = Object.values(save.crew).reduce((a, b) => a + b, 0);
+  const found = ANIMAL_KINDS.filter(k => save.crew[k]).length;
+  $("crewTitle").textContent = `My Crew · ${found}/${ANIMAL_KINDS.length} kinds · ${total} friends`;
+  ANIMAL_KINDS.forEach((kind, i) => {
+    const owned = save.crew[kind] > 0;
+    const m = buildAnimal(kind, !owned);
+    const col = i % 4, row = Math.floor(i / 4);
+    m.position.set((col - 1.5) * 2.4 + (row ? 1.2 : 0) - 0.6, 0, row ? 2.2 : -0.4);
+    m.scale.setScalar(1.35);
+    m.userData.phase = rand(0, 6);
+    m.userData.owned = owned;
+    scene.add(m);
+    const el = document.createElement("div");
+    el.className = "label";
+    el.innerHTML = owned
+      ? `<div class="crew-label">${ANIMALS[kind].emoji} ${ANIMALS[kind].name} ×${save.crew[kind]}</div>`
+      : `<div class="crew-label unknown">? ? ?</div>`;
+    labelsEl.appendChild(el);
+    showcase.push({ m, el });
+  });
+  if (!total) hint("Catch gems to meet woodland friends! 🌿", 5000);
+}
+function clearCrewShowcase() {
+  for (const { m, el } of showcase) { scene.remove(m); el.remove(); }
+  showcase = [];
+}
+
+/* ------------------------------ celebrate --------------------------- */
+
+function celebrate() {
+  sfx.complete();
+  say("Hooray! Your bag is full!");
+  fairyAnim.celebrate = 0.001;
+  for (let i = 0; i < 4; i++) {
+    setTimeout(() => burst(new THREE.Vector3(rand(-5, 5), rand(3, 5), rand(-2, 1)),
+      [0xff8fc8, 0x6fc8ff, 0xffc93c, 0x5fdc96, 0xb48cff, 0xffffff], 30, 5), i * 300);
+  }
+  const n = game.levelNum;
+  const stars = game.missed === 0 ? 3 : game.missed <= 3 ? 2 : 1;
+  save.stars[n] = Math.max(save.stars[n] || 0, stars);
+  save.unlocked = Math.max(save.unlocked, Math.min(n + 1, LEVELS.length));
+  persist();
+
+  setTimeout(() => {
+    if (mode !== "celebrate") return;
+    const titles = ["Bag full! 🎒", "Sparkly work! ✨", "Wonderful! 🌈", "Hooray! 🎉"];
+    $("completeTitle").textContent = n === LEVELS.length ? "You finished every level! 👑" : pick(titles);
+    $("completeStars").innerHTML = [1, 2, 3].map(i => `<span class="${i <= stars ? "" : "dim"}">⭐</span>`).join("");
+    $("completeStats").innerHTML =
+      `💎 Gems caught: <b>${game.collected}</b><br>` +
+      `🍃 Gems that hid again: <b>${game.missed}</b>` +
+      (game.level.challenge ? `<br>${GEMS[game.level.challenge.color].emoji} ${game.level.challenge.color} gems: <b>done!</b>` : "");
+    $("completeFriends").innerHTML = game.newFriends.length
+      ? `New friends: ${game.newFriends.map(k => `<span class="emo">${ANIMALS[k].emoji}</span>`).join(" ")}`
+      : "";
+    $("nextBtn").style.display = n < LEVELS.length ? "" : "none";
+    showOverlay("completeScreen");
+  }, 2200);
+}
+
+/* ============================== fairy anim ========================== */
+
+const fairyTrail = { t: 0 };
+function updateFairy(dt) {
+  const u = fairy.userData;
+  const base = fairyAnim.base;
+  let x = base.x, y = base.y + Math.sin(clock * 2.2) * 0.15, z = base.z;
+  let turn = 0.9;
+
+  if (mode === "crew") { x = 0; y = 3.2 + Math.sin(clock * 2.2) * 0.15; z = -2.4; turn = 0; }
+  if (mode === "play" && game.target) {
+    // lean toward the gem being spelled
+    const tx = game.target.root.position.x;
+    turn = THREE.MathUtils.clamp(Math.atan2(tx - x, game.target.root.position.z - z), 0.2, 1.6);
+  }
+  if (fairyAnim.celebrate > 0) {
+    fairyAnim.celebrate += dt;
+    const k = fairyAnim.celebrate;
+    x += Math.sin(k * 3) * 1.5;
+    y += Math.abs(Math.sin(k * 3)) * 1.2;
+    turn = k * 6;
+  }
+  fairy.position.x += (x - fairy.position.x) * Math.min(1, dt * 4);
+  fairy.position.y += (y - fairy.position.y) * Math.min(1, dt * 4);
+  fairy.position.z += (z - fairy.position.z) * Math.min(1, dt * 4);
+  fairyAnim.turn += (turn - fairyAnim.turn) * Math.min(1, dt * 6);
+
+  if (fairyAnim.spin > 0) fairyAnim.spin = Math.max(0, fairyAnim.spin - dt * 1.8);
+  fairy.rotation.y = fairyAnim.turn + (1 - fairyAnim.spin) * (fairyAnim.spin > 0 ? Math.PI * 2 : 0);
+  u.body.rotation.z = Math.sin(clock * 1.7) * 0.06;
+  u.head.rotation.z = Math.sin(clock * 1.3) * 0.1;
+  u.arm.rotation.z = Math.sin(clock * 3) * 0.15 + (game.target && mode === "play" ? -0.5 : 0);
+  u.star.rotation.z += dt * 2;
+  for (const w of u.wings) {
+    const s = w.userData.side;
+    w.rotation.y = s * (0.5 + Math.sin(clock * 16) * 0.5);
+    w.rotation.x = 0.2;
+  }
+
+  // sparkly trail
+  fairyTrail.t -= dt;
+  if (fairyTrail.t <= 0) {
+    fairyTrail.t = 0.07;
+    u.wandTip.getWorldPosition(tmpV);
+    emit({
+      pos: tmpV.clone().add(new THREE.Vector3(rand(-0.1, 0.1), rand(-0.1, 0.1), 0)),
+      vel: new THREE.Vector3(-worldSpeed * 0.9 - 0.3, rand(-0.3, 0.1), rand(-0.2, 0.2)),
+      color: pick([0xffe27a, 0xffffff, 0xffb3dc, 0xb9e5ff]), size: rand(0.15, 0.3), life: rand(0.6, 1.0),
+    });
+  }
+}
+
+/* =============================== loop =============================== */
+
+function update(dt) {
+  clock += dt;
+  let target = 0;
+  if (mode === "title") target = 1.2;
+  else if (mode === "play") target = game.level.speed * (game.target ? 0.6 : 1);  // the forest waits a little while you spell
+  worldSpeed += (target - worldSpeed) * Math.min(1, dt * 3);
+
+  for (const s of scenery) {
+    s.position.x -= worldSpeed * dt;
+    if (s.position.x < -WORLD_HALF) s.position.x += WORLD_HALF * 2;
+  }
+  for (const c of clouds) {
+    c.position.x -= (c.userData.speed + worldSpeed * 0.05) * dt;
+    if (c.position.x < -45) c.position.x = 45;
+  }
+  if (sceneryExtras.sun) sceneryExtras.sun.rotation.z = Math.sin(clock * 0.8) * 0.06;
+
+  if (mode === "play" || mode === "celebrate") {
+    for (let i = game.pending.length - 1; i >= 0; i--) {
+      game.pending[i] -= dt;
+      if (game.pending[i] <= 0) {
+        game.pending.splice(i, 1);
+        if (mode === "play" && liveGems().length < game.level.maxOnScreen) spawnGem();
+      }
+    }
+  }
+  updateGems(dt);
+  updateFairy(dt);
+  updateCrew(dt);
+
+  for (const { m } of showcase) {
+    m.position.y = m.userData.owned ? Math.abs(Math.sin(clock * 3 + m.userData.phase)) * 0.25 : 0;
+    m.rotation.y = Math.sin(clock * 1.2 + m.userData.phase) * 0.4;
+  }
+
+  // drifting pollen
+  if (Math.random() < dt * 6) {
+    emit({ pos: new THREE.Vector3(rand(-10, 12), rand(0.5, 4), rand(-4, 3)), vel: new THREE.Vector3(-worldSpeed * 0.6 - 0.2, rand(0.05, 0.3), 0),
+           color: pick([0xffffff, 0xfff0a8, 0xffd6ec]), size: rand(0.08, 0.16), life: rand(2, 4), tex: dotTex });
+  }
+  updateParticles(dt);
+}
+
+function project(obj, offsetY, el, below = false) {
+  obj.getWorldPosition(tmpV);
+  tmpV.y += offsetY;
+  tmpV.project(camera);
+  if (tmpV.z > 1) { el.style.visibility = "hidden"; return; }
+  el.style.visibility = "";
+  const x = (tmpV.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-tmpV.y * 0.5 + 0.5) * window.innerHeight;
+  el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, ${below ? "10%" : "-100%"})`;
+}
+
+function updateLabels() {
+  for (const gem of game.gems) {
+    if (gem.state === "rising" || gem.state === "active" || gem.state === "miss") project(gem.mesh, 0.75, gem.label);
+  }
+  for (const { m, el } of showcase) project(m, 0, el, true);
+}
+
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - last) / 1000, 0.1);
+  last = now;
+  if (!paused) update(dt);
+  renderer.render(scene, camera);
+  updateLabels();
+}
+
+/* ============================ resize/camera ========================= */
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  // keep the whole fairy-to-gem stretch visible, even on narrow screens
+  const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const dist = THREE.MathUtils.clamp(8.2 / (halfTan * camera.aspect), 12, 34);
+  camera.position.set(0, 2.6 + dist * 0.16, dist);
+  camera.lookAt(lookTarget);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+
+/* ============================== pause =============================== */
+
+function togglePause() {
+  if (mode !== "play") return;
+  paused = !paused;
+  showOverlay(paused ? "pauseScreen" : null);
+  showKeyboard(!paused);
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && mode === "play" && !paused) togglePause();
 });
-$("quitBtn").addEventListener("click", () => {
-  stopLevel();
-  renderTitle();
-  showScreen("titleScreen");
-});
+
+/* ======================== on-screen keyboard ======================== */
+
+const touchDevice = window.matchMedia("(pointer: coarse)").matches;
+function buildKeyboard() {
+  const kbd = $("kbd");
+  for (const row of ["qwertyuiop", "asdfghjkl", "zxcvbnm"]) {
+    const r = document.createElement("div");
+    r.className = "row";
+    for (const ch of row) {
+      const b = document.createElement("button");
+      b.textContent = ch;
+      b.addEventListener("pointerdown", (e) => { e.preventDefault(); startMusic(); handleLetter(ch); });
+      r.appendChild(b);
+    }
+    kbd.appendChild(r);
+  }
+}
+function showKeyboard(on) { $("kbd").classList.toggle("active", on && touchDevice); }
+
+/* ============================== menus =============================== */
+
+function renderLevelGrid() {
+  const grid = $("levelGrid");
+  grid.innerHTML = "";
+  LEVELS.forEach((_, i) => {
+    const n = i + 1;
+    const b = document.createElement("button");
+    const locked = n > save.unlocked;
+    const stars = save.stars[n] || 0;
+    b.className = locked ? "locked" : n % 3 === 1 ? "" : n % 3 === 2 ? "sky" : "mint";
+    b.innerHTML = `${locked ? "🔒" : n}<span class="stars">${"⭐".repeat(stars)}</span>`;
+    b.disabled = locked;
+    b.addEventListener("click", () => startLevel(n));
+    grid.appendChild(b);
+  });
+}
+
+function setIcons() {
+  $("muteBtn").textContent = save.muted ? "🔇" : "🔊";
+  $("voiceBtn").classList.toggle("off", !save.speak);
+}
+
+$("playBtn").addEventListener("click", () => { startMusic(); startLevel(save.unlocked); });
+$("levelsBtn").addEventListener("click", () => { renderLevelGrid(); showOverlay("levelScreen"); });
+$("levelsBackBtn").addEventListener("click", () => showOverlay("titleScreen"));
+$("crewBtn").addEventListener("click", openCrew);
+$("crewBackBtn").addEventListener("click", goToMenu);
+$("pauseBtn").addEventListener("click", togglePause);
+$("resumeBtn").addEventListener("click", togglePause);
+$("quitBtn").addEventListener("click", goToMenu);
+$("menuBtn").addEventListener("click", goToMenu);
 $("replayBtn").addEventListener("click", () => startLevel(game.levelNum));
 $("nextBtn").addEventListener("click", () => startLevel(game.levelNum + 1));
-$("menuBtn").addEventListener("click", () => {
-  $("completeOverlay").classList.remove("active");
-  renderTitle();
-  showScreen("titleScreen");
+$("muteBtn").addEventListener("click", () => {
+  save.muted = !save.muted;
+  persist();
+  setIcons();
+  if (save.muted) { music.pause(); window.speechSynthesis?.cancel(); } else playMusic();
 });
-
-$("muteBtn").addEventListener("click", () => setMuted(!muted));
-$("muteBtn").textContent = muted ? "🔇" : "🔊";
-
-// background music may only start after the first user gesture
+$("voiceBtn").addEventListener("click", () => {
+  save.speak = !save.speak;
+  persist();
+  setIcons();
+  if (save.speak) say("I'll say each word!");
+});
 window.addEventListener("pointerdown", startMusic);
-window.addEventListener("keydown", startMusic);
+// keep buttons from stealing keyboard focus (space/enter would click them while typing)
+document.addEventListener("mousedown", (e) => { if (e.target.closest("button")) e.preventDefault(); });
 
-buildForest();
-renderTitle();
+/* =============================== start ============================== */
+
+buildScenery();
+buildClouds();
+buildKeyboard();
+seedCrew();
+setIcons();
+resize();
+requestAnimationFrame(frame);
+window.__gemFairyReady = true;
+$("loading").remove();
 </script>
 </body>
 </html>
