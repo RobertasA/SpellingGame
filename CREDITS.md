@@ -5,14 +5,14 @@ so no attribution is legally required — credits below are given with thanks.
 
 ## Visuals
 
-| Asset | Files | Source | Author | License |
-|---|---|---|---|---|
-| Woodland animals (owl, rabbit, bear, frog, panda, duck) | `assets/sprites/animals/*.png` | [Animal Pack Remastered](https://kenney.nl/assets/animal-pack-remastered) | Kenney | CC0 1.0 |
-| Gem sprites (pink, blue, gold, green) | `assets/sprites/gems/*.png` | [Gem Match 3 Set](https://opengameart.org/content/gem-match-3-set) | Sylly | CC0 1.0 |
-| Forest trees | `assets/scenery/*.png` | [Background Elements Remastered](https://kenney.nl/assets/background-elements-remastered) | Kenney | CC0 1.0 — currently unused; the game draws its own gum-tree SVGs |
+Everything you see is built in code with [three.js](https://threejs.org/) (MIT license,
+loaded from the jsDelivr CDN): the puppy fairy, the woodland crew, the gems, trees,
+hiding spots and sparkles are all original procedural 3D models made for this game.
+No external image assets are used.
 
-The fairy player sprite, gum trees, and hiding spots (bush, stump, ferns) are original
-hand-drawn SVG art made for this game (no external asset).
+Earlier 2D versions of the game used Kenney's Animal Pack Remastered and Background
+Elements Remastered (CC0) and Sylly's Gem Match 3 Set (CC0); those files were removed
+with the 3D rebuild.
 
 ## Audio
 
@@ -24,7 +24,6 @@ hand-drawn SVG art made for this game (no external asset).
 
 ## License verification notes
 
-- **Gem Match 3 Set** — OpenGameArt page lists CC0.
 - **Cozy Puzzle In-Game 1** — OpenGameArt page lists CC0; track is marked loopable by the author.
 - **Kenney packs** — kenney.nl assets are CC0; each pack ships a `License.txt` confirming this.
 
