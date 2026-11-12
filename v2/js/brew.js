@@ -26,25 +26,37 @@ function later(fn, ms) {
 function clearBrewTimers() { brew.timers.forEach(clearTimeout); brew.timers = []; }
 
 function chooseBrewWords() {
+  const level = flight.level;
+  // keyboard levels brew little words only; later ones anything that fits on the shelf
+  const maxLen = level.letters ? 4 : 9;
   // words that needed a few tries come first — a second look helps them stick
   const seen = new Set();
   const played = flight.played.slice().sort((a, b) => b.errors - a.errors + (Math.random() - 0.5) * 0.5);
   const out = [];
   for (const p of played) {
-    if (seen.has(p.word.text) || p.word.text.length > 9) continue;
+    if (seen.has(p.word.text) || p.word.text.length > maxLen) continue;
     seen.add(p.word.text);
     out.push(p.word);
     if (out.length === 3) break;
   }
-  for (const w of shuffle(flight.level.words)) {
+  for (const w of shuffle(level.words)) {
     if (out.length >= 3) break;
-    if (!seen.has(w.text) && w.text.length <= 9) { seen.add(w.text); out.push(w); }
+    if (!seen.has(w.text) && w.text.length <= maxLen) { seen.add(w.text); out.push(w); }
   }
-  return out.sort((a, b) => a.text.length - b.text.length);
+  out.sort((a, b) => a.text.length - b.text.length);
+  if (level.letters && !out.some(easyToAsk)) {
+    // nothing little enough to ask for by ear: swap the longest word for one that is
+    const pool = shuffle(level.words.filter(w => easyToAsk(w) && !seen.has(w.text)));
+    const little = pool.find(w => w.emoji) || pool[0];
+    if (little) { out[out.length - 1] = little; out.sort((a, b) => a.text.length - b.text.length); }
+  }
+  return out;
 }
 
 /** A word can be a challenge if the child can tell which word it is without seeing it. */
 function canDictate(w) { return !!w.emoji || willBeHeard(w.text); }
+/** In the keyboard levels only a two- or three-letter word is asked for by ear. */
+function easyToAsk(w) { return w.text.length <= 3 && canDictate(w); }
 /** Decide which of the words are star challenges (and put the challenge last when there is just one). */
 function chooseChallenges(words) {
   const style = save.brewMode || "mix";
@@ -52,7 +64,7 @@ function chooseChallenges(words) {
   const flags = words.map(() => false);
   if (style !== "mix") return flags;
   // a word with a picture is the friendliest one to be asked for
-  const able = words.filter(canDictate);
+  const able = words.filter(flight.level.letters ? easyToAsk : canDictate);
   const star = able.find(w => w.emoji) || able[0];
   if (!star) return flags;
   words.splice(words.indexOf(star), 1);
@@ -105,7 +117,8 @@ function renderSlots() {
   // letter index where the current grapheme starts
   let start = 0;
   for (let k = 0; k < brew.slot; k++) start += w.graphemes[k].t.length;
-  el.innerHTML = wordHTML(w, (i) => (brew.phase === "spell" && i >= start && i < start + brew.inG ? "typed" : ""));
+  const ghost = brew.phase === "spell" && brew.challenge && brew.wrong >= 3 && !screenKeysWanted() ? start + brew.inG : -1;
+  el.innerHTML = wordHTML(w, (i) => (brew.phase === "spell" && i >= start && i < start + brew.inG ? "typed" : i === ghost ? "ghost" : ""));
   const gs = el.querySelectorAll(".g");
   gs.forEach((g, k) => {
     if (brew.phase === "spell") {
@@ -156,6 +169,11 @@ function brewHear() {
     }
     box.appendChild(r);
   }
+  const tip = document.createElement("div");
+  tip.className = "type-tip";
+  tip.textContent = "⌨️ Type the letters";
+  box.appendChild(tip);
+  box.classList.toggle("tucked", !screenKeysWanted());
   $("brewPeek").disabled = false;
   renderSlots();
   applyView();                                    // the panel is taller now
@@ -166,6 +184,14 @@ function brewHear() {
     caption(heard ? "⭐ Star challenge! This word is hiding. Listen… and spell it yourself!" : "⭐ Star challenge! This word is hiding. Can you spell it yourself?", 5200, true);
   } else caption(heard ? "⭐ Star challenge! Listen… and spell it." : "⭐ Star challenge! Can you spell it?", 2600, true);
   say(w.text, { rate: 0.75, queue: true });
+}
+
+/** Tuck the challenge keyboard away while a real one is being typed on, and bring it back for a finger. */
+function brewKeysRefresh() {
+  if (!brew.challenge || brew.phase !== "spell") return;
+  $("brewTiles").classList.toggle("tucked", !screenKeysWanted());
+  renderSlots();
+  applyView();
 }
 
 function makeTiles(w) {
@@ -228,6 +254,7 @@ function brewWrong(tileEl) {
       const key = brew.keys[brew.word.graphemes[brew.slot].t[brew.inG]];
       if (key) key.classList.add("glow");
       brew.helped = true;
+      renderSlots();                              // with no screen keys to light up, the letter shows faintly in its place
     }
   } else if (brew.wrong >= 2) {
     // show which sound comes next — nobody gets stuck

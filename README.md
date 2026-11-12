@@ -61,8 +61,9 @@ still hiding, and a couple of the ones already found turn up at the start of eve
   slipped into later levels for another go. Brewing favours the words that were hardest when flying.
 - **Dress up**: choose skin, hair, outfit, cat and broom sparkles, and name the witch.
   New outfits and cats unlock as stars are collected.
-- **On-screen keyboard** on tablets, in lower case, with vowels picked out; `q w e r t y` or
-  `a b c` order. `Esc` pauses, `Backspace` lets go of a word.
+- **On-screen keyboard** for touch screens, in lower case, with vowels picked out; `q w e r t y` or
+  `a b c` order. It tucks itself away as soon as a real keyboard is typed on, and comes back at
+  a touch. `Esc` pauses, `Backspace` lets go of a word.
 - **A page for grown-ups**: settings, the curriculum focus of every level, the child's wobbly
   words, and a switch to unlock every level so an older child can start further on.
 - **Works offline**: three.js and the fonts are bundled, sound effects are made in code, and after
@@ -70,24 +71,29 @@ still hiding, and a couple of the ones already found turn up at the start of eve
 
 ### Curriculum link (England)
 
-The levels loosely follow the order sounds and spellings are taught in English primary schools —
-Reception phonics, then the spelling content of the National Curriculum for Year 1 and Year 2
-(English Appendix 1). It is a practice game, not a scheme of work.
+The hardest thing about the game for a five-year-old is finding the keys, so the letters come
+first and the phonics second. Levels 1–10 bring in two to four new keys at a time (in the order
+phonics teaches the letters) and use only words where every letter is its own sound. From level 11
+the spellings where letters work together follow, loosely in the order they are taught in English
+primary schools — Reception phonics, then the spelling content of the National Curriculum for
+Year 1 and Year 2 (English Appendix 1). It is a practice game, not a scheme of work.
 
 | Place | Levels | Roughly | Focus |
 |---|---|---|---|
-| 🏡 Cottage Garden | 1–5 | Reception (Phase 2) | `s a t p i n`, `m d g o c k`, `ck e u r`, `h b f l`, `ff ll ss zz`, `j v w x y z qu` — VC and CVC words |
-| 🎃 Pumpkin Patch | 6–10 | Reception → Year 1 (Phases 3–4) | `sh ch`, `th ng`, `nk` and end blends, start blends, `tch` and `-ve` |
-| 🐸 Misty Pond | 11–15 | Reception → Year 1 (Phase 3) | `ai ee`, `igh oa`, `oo`, `ar or ur`, `ow oi ear air er` |
-| 🍄 Mushroom Glade | 16–20 | Year 1 (Phase 5) | split digraphs `a-e i-e o-e u-e e-e`, `ay ou ie ea`, `oy ir ue aw`, `wh ph ew` |
-| ❄️ Frosty Peak | 21–25 | Year 1 | common exception words, `-s -es -ing -ed -er -est`, `un-`, `-y`, compound words, `ore are ear au` |
-| 🏰 Moon Castle | 26–30 | Year 2 | `kn gn wr`, `dge ge` and soft `c`, `-le -el -al -il`, `all`, `wa`, `wor`, `o` as in *other*, `-ey`, Year 2 common exception words |
+| 🏡 Cottage Garden | 1–5 | Finding the keys (Phase 2 letters) | new keys `s a t p`, `i n`, `m d`, `g o`, `c k` — two-, three- and four-letter words, one star at a time |
+| 🎃 Pumpkin Patch | 6–10 | Finding the keys (Phases 2–4) | new keys `e u`, `r h`, `b f l`, `j v w`, `x y z q` — the whole alphabet, still one letter per sound |
+| 🐸 Misty Pond | 11–15 | Reception → Year 1 (Phase 3) | two letters, one sound: `ck ff ll ss zz`, `sh ch`, `th ng`, `tch` and `-ve`, `ai ee` |
+| 🍄 Mushroom Glade | 16–20 | Year 1 (Phases 3 and 5) | `igh oa oo`, `ar or ur`, `ow oi ear air er`, split digraphs `a-e i-e o-e u-e e-e` |
+| ❄️ Frosty Peak | 21–25 | Year 1 | `ay ou ie ea`, `oy ir ue aw`, `wh ph ew`, Year 1 common exception words |
+| 🏰 Moon Castle | 26–30 | Year 1 → Year 2 | `-s -es -ing -ed -er -est`, `un-`, `-y`, compound words, `ore are ear au`, `kn gn wr`, `dge ge` and soft `c`, `-le -el -al -il`, `all`, `wa`, `wor`, `o` as in *other*, `-ey`, Year 2 common exception words |
 
 Typing a word that is on screen practises reading, letter recognition and keyboard skills.
 Brewing practises spelling from memory with the "look, cover, write, check" routine, and building
 words from graphemes rather than single letters. The star challenge is a one-word dictation:
 segmenting a spoken word into its sounds and writing them down unaided. The grown-ups page can
-switch brewing to always look first, or to challenges only.
+switch brewing to always look first, or to challenges only. In the keyboard levels (1–10) brewing
+keeps to words of four letters or fewer, and the star challenge only ever asks for a two- or
+three-letter word.
 
 ### Running it
 
@@ -183,7 +189,7 @@ the word is spelled, the gem just hides again. There's no losing, only trying ag
   See them all under **My Crew**.
 - Stars per level: 3 stars for catching every gem, fewer if some hid again.
 - Optional read-aloud: the game says each word when you catch it (🗣️ button).
-- Tablets get an on-screen keyboard. `Esc` pauses, `Backspace` lets go of a word.
+- Touch screens get an on-screen keyboard, hidden while a real one is in use. `Esc` pauses, `Backspace` lets go of a word.
 
 Progress, stars and your crew are saved in the browser (localStorage).
 

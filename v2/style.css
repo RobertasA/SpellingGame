@@ -317,6 +317,11 @@ h1 .t2 { display: block; }
 #brewTiles.keys button:active, #brewTiles.keys button.down { transform: translateY(3px); box-shadow: 0 1px 0 #d6c8ec; background: #ffe9a0; }
 #brewTiles.keys button.vowel { color: var(--pink-deep); }
 #brewTiles.keys button.glow { background: var(--gold); box-shadow: 0 4px 0 var(--gold-deep), 0 0 0 4px rgba(255, 207, 74, .5); animation: glowpulse 1s ease-in-out infinite; }
+#brewTiles .type-tip { display: none; font-size: 17px; font-weight: 700; color: var(--ink-soft); padding: 4px 0 2px; }
+#brewTiles.keys.tucked .row { display: none; }
+#brewTiles.keys.tucked .type-tip { display: block; }
+#brewSlots .g i.ghost { visibility: visible; color: var(--gold-deep); opacity: .6; animation: ghostpulse 1s ease-in-out infinite; }
+@keyframes ghostpulse { 50% { opacity: .25; } }
 #brewUI.challenge { box-shadow: 0 0 0 4px var(--gold), 0 10px 30px rgba(50, 30, 90, .25); }
 #brewUI.challenge #brewPic { font-size: 56px; }
 .fly {
