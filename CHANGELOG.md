@@ -1,7 +1,23 @@
 # Changelog
 
-## Little Star Witch 2.1.1
+## Little Star Witch 2.2
 
+**Keys first, phonics second**
+- The levels are in a new order. The first ten are about finding the keys: each brings in two to
+  four new letters (`s a t p`, then `i n`, `m d`, `g o`, `c k`, `e u`, `r h`, `b f l`, `j v w`,
+  `x y z q`) and uses only words spelt one letter per sound with letters already met. The banner
+  at the start of a level names the new keys.
+- Phonics starts at level 11 with the gentlest "two letters, one sound" spellings
+  (`ck ff ll ss zz`), then `sh ch`, `th ng` and onwards. Nothing was dropped: the 24 phonics and
+  spelling groups now share 20 levels, so a few later levels cover more.
+- The whole of the Cottage Garden shows one star at a time, and the keyboard levels give longer
+  to type each word.
+- Brewing in the keyboard levels uses words of four letters or fewer, and the star challenge
+  (hear it, then spell it) only asks for a two- or three-letter word.
+- Saved stars stay with their level number, so after this update a star may sit on a level whose
+  words have changed. "Start again from the beginning" on the grown-ups page clears them.
+
+**Keyboard**
 - The on-screen keyboard stays out of the way while a real keyboard is being typed on, in the
   star challenge as well as when flying. Touching the screen while spelling brings it back.
   When the challenge keyboard is hidden, a stuck child sees the next letter faintly in its place.

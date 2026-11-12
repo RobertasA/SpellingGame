@@ -26,25 +26,37 @@ function later(fn, ms) {
 function clearBrewTimers() { brew.timers.forEach(clearTimeout); brew.timers = []; }
 
 function chooseBrewWords() {
+  const level = flight.level;
+  // keyboard levels brew little words only; later ones anything that fits on the shelf
+  const maxLen = level.letters ? 4 : 9;
   // words that needed a few tries come first — a second look helps them stick
   const seen = new Set();
   const played = flight.played.slice().sort((a, b) => b.errors - a.errors + (Math.random() - 0.5) * 0.5);
   const out = [];
   for (const p of played) {
-    if (seen.has(p.word.text) || p.word.text.length > 9) continue;
+    if (seen.has(p.word.text) || p.word.text.length > maxLen) continue;
     seen.add(p.word.text);
     out.push(p.word);
     if (out.length === 3) break;
   }
-  for (const w of shuffle(flight.level.words)) {
+  for (const w of shuffle(level.words)) {
     if (out.length >= 3) break;
-    if (!seen.has(w.text) && w.text.length <= 9) { seen.add(w.text); out.push(w); }
+    if (!seen.has(w.text) && w.text.length <= maxLen) { seen.add(w.text); out.push(w); }
   }
-  return out.sort((a, b) => a.text.length - b.text.length);
+  out.sort((a, b) => a.text.length - b.text.length);
+  if (level.letters && !out.some(easyToAsk)) {
+    // nothing little enough to ask for by ear: swap the longest word for one that is
+    const pool = shuffle(level.words.filter(w => easyToAsk(w) && !seen.has(w.text)));
+    const little = pool.find(w => w.emoji) || pool[0];
+    if (little) { out[out.length - 1] = little; out.sort((a, b) => a.text.length - b.text.length); }
+  }
+  return out;
 }
 
 /** A word can be a challenge if the child can tell which word it is without seeing it. */
 function canDictate(w) { return !!w.emoji || willBeHeard(w.text); }
+/** In the keyboard levels only a two- or three-letter word is asked for by ear. */
+function easyToAsk(w) { return w.text.length <= 3 && canDictate(w); }
 /** Decide which of the words are star challenges (and put the challenge last when there is just one). */
 function chooseChallenges(words) {
   const style = save.brewMode || "mix";
@@ -52,7 +64,7 @@ function chooseChallenges(words) {
   const flags = words.map(() => false);
   if (style !== "mix") return flags;
   // a word with a picture is the friendliest one to be asked for
-  const able = words.filter(canDictate);
+  const able = words.filter(flight.level.letters ? easyToAsk : canDictate);
   const star = able.find(w => w.emoji) || able[0];
   if (!star) return flags;
   words.splice(words.indexOf(star), 1);

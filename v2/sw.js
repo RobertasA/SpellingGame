@@ -2,7 +2,7 @@
    Serves the game from a cache straight away and refreshes the cache in the
    background, so the game opens without a connection and updates itself the
    next time it is opened. */
-const CACHE = "little-star-witch-v4";
+const CACHE = "little-star-witch-v5";
 const CORE = [
   "./", "index.html", "style.css", "icon.svg", "manifest.webmanifest",
   "record.html", "record.css", "js/record.js",

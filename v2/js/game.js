@@ -647,7 +647,7 @@ function startLevel(n) {
   layoutCrew();
   applyView();
   setSkyFullness(skyFullness());
-  banner(`${place.name}<small>${level.focus}</small>`, 3200);
+  banner(`${place.name}<small>${level.letters ? "new keys: " : ""}${level.focus}</small>`, 3200);
   if (!save.tips.fly) {
     save.tips.fly = 1; persist();
     setTimeout(() => { if (mode === "flight") { hint("Type the letters to send the star home! ⭐", 7000); say("Type the letters to send the star home!"); } }, 2600);
