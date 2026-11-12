@@ -71,7 +71,8 @@ const sky = new THREE.Mesh(
 );
 sky.frustumCulled = false;
 scene.add(sky);
-function setSkyFullness(f) { skyUniforms.uFull.value = clamp(f, 0, 1); }
+let skyFull = 0;      // how many of the game's stars are back; night-time levels show more of them
+function setSkyFullness(f) { skyFull = f; skyUniforms.uFull.value = clamp(f + (MOODS[moodIndex].stars || 0), 0, 1); }
 
 // stars sent home during a level twinkle in the sky until the level ends
 const homeStars = [];
@@ -1145,8 +1146,51 @@ function hideout(kind) {
 
 let biomeIndex = -1;
 let moonY = 19;       // the moon dips a little when the camera looks down at the cauldron
-function setBiome(i) {
-  if (i === biomeIndex) return;
+/* Each of a place's five levels is flown at a different time of day, so no two feel the same.
+   A mood bends the place's own colours rather than replacing them:
+   sky = [top, middle, horizon] to lean towards and how far; then multipliers for the lights. */
+const MOODS = [
+  { name: "evening" },
+  { name: "golden hour", sky: [0x6a3fa0, 0xff8f6a, 0xffd27a], lean: 0.3, key: [0xffc070, 0.3, 1.06], hemi: 1.0, rim: 1.1, exposure: 1.04, fog: 0.9, stars: 0 },
+  { name: "twilight", sky: [0x16154e, 0x5a3f9e, 0xd98ab8], lean: 0.42, key: [0xe9d4ff, 0.35, 0.86], hemi: 0.88, rim: 1.25, exposure: 0.95, fog: 1.0, stars: 0.25 },
+  { name: "starry night", sky: [0x070a30, 0x1c2470, 0x5a5ac8], lean: 0.66, key: [0xbfd0ff, 0.6, 0.64], hemi: 0.66, rim: 1.6, exposure: 0.9, fog: 0.85, stars: 0.6 },
+  { name: "dawn", sky: [0x5aa6f0, 0xffb8d0, 0xffe6ae], lean: 0.4, key: [0xfff0d0, 0.4, 1.0], hemi: 0.96, rim: 0.9, exposure: 0.95, fog: 0.95, stars: 0 },
+];
+let moodIndex = 0;
+const moodC = new THREE.Color();
+function applyLook(b, m) {
+  const lean = m.lean || 0;
+  const sky = b.sky.map((c, k) => new THREE.Color(c).lerp(moodC.set(m.sky ? m.sky[k] : c), lean));
+  skyUniforms.top.value.copy(sky[0]);
+  skyUniforms.mid.value.copy(sky[1]);
+  skyUniforms.bottom.value.copy(sky[2]);
+  // the haze takes on the colour of the horizon
+  scene.fog.color.set(b.fog[0]).lerp(sky[2], lean * 0.7);
+  fogBase = b.fog[1] * (m.fog || 1);
+  hemiLight.color.set(b.hemi[0]).lerp(sky[1], lean * 0.5);
+  hemiLight.groundColor.set(b.hemi[1]);
+  hemiLight.intensity = b.hemi[2] * (m.hemi || 1);
+  keyLight.color.set(b.key[0]);
+  if (m.key) keyLight.color.lerp(moodC.set(m.key[0]), m.key[1]);
+  keyLight.intensity = b.key[1] * (m.key ? m.key[2] : 1);
+  rimLight.color.set(b.rim[0]);
+  rimLight.intensity = b.rim[1] * (m.rim || 1);
+  RIM_COLOR.value.set(b.rim[0]);
+  renderer.toneMappingExposure = b.exposure * (m.exposure || 1);
+  buildEnvironment(sky.map(c => c.getHex()), b.ground[0], keyLight.color.getHex(), b.rim[0]);
+  setSkyFullness(skyFull);
+}
+/** Change the time of day without rebuilding the place. */
+function setMood(k) {
+  moodIndex = k % MOODS.length;
+  applyLook(BIOMES[biomeIndex], MOODS[moodIndex]);
+}
+
+/** Build a place. `fresh` rebuilds it even if it is already there, so its scenery is laid out anew for each level. */
+function setBiome(i, fresh = false, mood = null) {
+  if (i === biomeIndex && !fresh) return;
+  if (mood !== null) moodIndex = mood % MOODS.length;
+  else if (i !== biomeIndex) moodIndex = 0;
   biomeIndex = i;
   const b = BIOMES[i];
   clearGroup(world);
@@ -1154,21 +1198,7 @@ function setBiome(i) {
   scenery = [];
   terrain = b.terrain;
 
-  skyUniforms.top.value.set(b.sky[0]);
-  skyUniforms.mid.value.set(b.sky[1]);
-  skyUniforms.bottom.value.set(b.sky[2]);
-  scene.fog.color.set(b.fog[0]);
-  fogBase = b.fog[1];
-  hemiLight.color.set(b.hemi[0]);
-  hemiLight.groundColor.set(b.hemi[1]);
-  hemiLight.intensity = b.hemi[2];
-  keyLight.color.set(b.key[0]);
-  keyLight.intensity = b.key[1];
-  rimLight.color.set(b.rim[0]);
-  rimLight.intensity = b.rim[1];
-  RIM_COLOR.value.set(b.rim[0]);
-  renderer.toneMappingExposure = b.exposure;
-  buildEnvironment(b.sky, b.ground[0], b.key[0], b.rim[0]);
+  applyLook(b, MOODS[moodIndex]);
 
   moon.scale.setScalar(i === 5 ? 2.1 : 1.25);
   moon.position.x = i === 5 ? -10 : -14;

@@ -332,6 +332,7 @@ function voiceCatalogue() {
   Object.values(STORY_LINES).forEach((t) => add("Story", "line", t));
   VOICE_STORY_EXTRA.forEach((t) => add("Story", "line", t));
   PLACES.forEach((place) => friendLines(place).forEach((t) => add("Friends", "line", t)));
+  CRITTERS.forEach((c) => add("Visitors", "line", critterHello(c)));
   VOICE_CHEERS.forEach((t) => add("Hints and cheers", "line", t));
   catalogueCache = out;
   return out.slice();

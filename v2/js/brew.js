@@ -349,6 +349,7 @@ function finishBrew() {
   const level = flight.level, place = PLACES[level.place];
   const stars = flight.missed === 0 ? 3 : flight.missed <= 2 ? 2 : 1;
   const first = !save.stars[level.n];
+  save.dry = flight.newCritters.length ? 0 : (save.dry || 0) + 1;
   save.stars[level.n] = Math.max(save.stars[level.n] || 0, stars);
   persist();
   flight.result = { stars, first };

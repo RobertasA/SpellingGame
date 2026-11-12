@@ -505,6 +505,166 @@ function buildFriend(kind) {
   return g;
 }
 
+/* ----------------------------- woodland visitors ----------------------------- */
+/* Eighteen little animals from one recipe: the same pear body and round head as the friends,
+   with ears, face, tail and markings chosen per animal. They are always happy. */
+const CRITTER_LOOKS = {
+  bunny:     { fur: 0xffffff, belly: 0xffeef5, ears: "long", inner: 0xffb6d0, face: "muzzle", tail: "puff" },
+  chick:     { fur: 0xffe066, belly: 0xfff3b0, face: "beak", beak: 0xff9a3c, feet: 0xff9a3c, wings: 0xffd23c, tuft: 0xffd23c },
+  piglet:    { fur: 0xffb3c7, belly: 0xffd3de, ears: "flop", face: "snout", tail: "curl" },
+  fox:       { fur: 0xf08a3c, belly: 0xffffff, ears: "point", inner: 0x4a3a44, face: "muzzle", muzzle: 0xffffff, tail: "bush", tip: 0xffffff },
+  squirrel:  { fur: 0xc9703a, belly: 0xffe6c9, ears: "point", face: "muzzle", muzzle: 0xffe6c9, tail: "swirl" },
+  badger:    { fur: 0x7c7d90, belly: 0xe8e8ee, head: 0x4a4a5c, ears: "round", small: true, inner: 0xffffff, face: "muzzle", muzzle: 0xffffff, stripe: 0xffffff, tail: "puff" },
+  duckling:  { fur: 0xffe680, belly: 0xfff6c4, face: "bill", beak: 0xff9a3c, feet: 0xff9a3c, wings: 0xffd95a, coat: "soft" },
+  otter:     { fur: 0x9a6b4a, belly: 0xf0d9bd, ears: "round", small: true, face: "muzzle", muzzle: 0xf0d9bd, tail: "thick", coat: "gloss" },
+  turtle:    { fur: 0x8fd67f, belly: 0xeaf7bd, face: "smile", shell: 0x4f9a5e, coat: "gloss" },
+  fawn:      { fur: 0xdba56b, belly: 0xfff0dc, ears: "point", inner: 0xffd9c4, face: "muzzle", muzzle: 0xfff0dc, spots: 0xffffff, tail: "puff", nubs: 0x8a5a3c },
+  ladybird:  { fur: 0xf2463e, belly: 0x4a4458, head: 0x4a4458, face: "smile", dots: 0x33303c, antennae: 0x33303c, coat: "gloss", feet: 0x33303c },
+  raccoon:   { fur: 0x9a9aa8, belly: 0xe6e6ee, ears: "point", inner: 0x55556a, face: "muzzle", muzzle: 0xffffff, mask: 0x4a4a5c, tail: "ring", tip: 0x4a4a5c },
+  penguin:   { fur: 0x3d4a72, belly: 0xffffff, face: "beak", beak: 0xffb14d, feet: 0xffb14d, wings: 0x3d4a72, cheeksOff: false, facePatch: 0xffffff, coat: "soft" },
+  polarbear: { fur: 0xffffff, belly: 0xf2f6ff, ears: "round", inner: 0xdfe8ff, face: "muzzle", muzzle: 0xf2f6ff, tail: "puff", scarf: 0x6fc3ff },
+  reindeer:  { fur: 0xa8734a, belly: 0xf3e2cf, ears: "point", inner: 0xf3e2cf, face: "muzzle", muzzle: 0xf3e2cf, antlers: 0xe8d2b0, redNose: true, tail: "puff" },
+  lamb:      { fur: 0xffffff, belly: 0xffffff, head: 0xffe9d9, ears: "flop", earColor: 0xffe9d9, face: "muzzle", muzzle: 0xffe9d9, wool: true, tail: "puff" },
+  panda:     { fur: 0xffffff, belly: 0xffffff, ears: "round", earColor: 0x3a3644, face: "muzzle", muzzle: 0xffffff, patches: 0x3a3644, feet: 0x3a3644, tail: "puff" },
+  unicorn:   { fur: 0xffffff, belly: 0xfff0fa, ears: "point", inner: 0xffc2e2, face: "muzzle", muzzle: 0xffe3f1, horn: 0xffd95a, mane: true, tail: "mane" },
+};
+function buildCritter(id) {
+  const L = CRITTER_LOOKS[id];
+  const g = new THREE.Group();
+  const coat = K[L.coat || "fur"];
+  const fur = coat(L.fur), belly = coat(L.belly), pink = K.skin(PINK);
+  const headFur = L.head !== undefined ? coat(L.head) : fur;
+  const U = { kind: id, critter: id, helpedParts: [], poorlyParts: [], wings: [], phase: rand(0, 6), helped: true, hover: 0, baseY: 0 };
+
+  const body = lathe(fur, PEAR, 20, "pear");
+  body.scale.set(0.98, 0.98, 0.9);
+  g.add(body);
+  g.add(ball(belly, 0.22, 0, 0.32, 0.17, 1, 1, 0.6));
+  const foot = L.feet !== undefined ? K.gloss(L.feet) : fur;
+  for (const s of [-1, 1]) g.add(ball(foot, 0.1, s * 0.14, 0.06, 0.13, 1, 0.6, 1.3));
+  // little arms (or wings) at the sides
+  const arm = L.wings !== undefined ? coat(L.wings) : L.patches !== undefined ? coat(L.patches) : fur;
+  for (const s of [-1, 1]) {
+    const a = ball(arm, 0.1, s * 0.31, 0.4, 0.04, 0.55, 1.5, L.wings !== undefined ? 1.1 : 0.8);
+    a.rotation.z = s * 0.35;
+    g.add(a);
+  }
+  const head = new THREE.Group();
+  head.position.set(0, 0.82, 0.04);
+  g.add(head);
+  U.head = head;
+  head.add(ball(headFur, 0.32));
+  if (L.facePatch !== undefined) head.add(ball(coat(L.facePatch), 0.25, 0, -0.03, 0.1, 1, 1, 0.9));
+
+  // markings behind the eyes
+  if (L.mask !== undefined) for (const s of [-1, 1]) head.add(ball(coat(L.mask), 0.11, s * 0.13, 0.04, 0.21, 1.25, 0.85, 0.6));
+  if (L.patches !== undefined) for (const s of [-1, 1]) { const m = ball(coat(L.patches), 0.095, s * 0.13, 0.03, 0.225, 0.85, 1.2, 0.5); m.rotation.z = s * 0.4; head.add(m); }
+  if (L.stripe !== undefined) head.add(ball(coat(L.stripe), 0.1, 0, 0.13, 0.19, 0.95, 2.3, 1.45));
+  eye(head, -0.12, 0.04, 0.27, 0.058); eye(head, 0.12, 0.04, 0.27, 0.058);
+  head.add(ball(pink, 0.05, -0.21, -0.06, 0.22, 1, 0.7, 0.5));
+  head.add(ball(pink, 0.05, 0.21, -0.06, 0.22, 1, 0.7, 0.5));
+
+  const earC = L.earColor !== undefined ? coat(L.earColor) : headFur;
+  const inner = L.inner !== undefined ? K.skin(L.inner) : pink;
+  for (const s of [-1, 1]) {
+    if (L.ears === "long") {
+      const e = new THREE.Group();
+      e.position.set(s * 0.13, 0.24, -0.02);
+      e.rotation.z = -s * 0.16;
+      e.add(ball(earC, 0.085, 0, 0.2, 0, 1, 2.7, 0.6));
+      e.add(ball(inner, 0.05, 0, 0.2, 0.035, 1, 2.9, 0.4));
+      head.add(e);
+    } else if (L.ears === "round") {
+      const r = L.small ? 0.075 : 0.125;
+      head.add(ball(earC, r, s * 0.25, 0.25, -0.02, 1, 1, 0.5));
+      if (L.earColor === undefined) head.add(ball(inner, r * 0.58, s * 0.25, 0.25, 0.02, 1, 1, 0.4));
+    } else if (L.ears === "point") {
+      head.add(cone(earC, 0.11, 0.24, s * 0.2, 0.3, -0.02, 0, -s * 0.3, 10));
+      head.add(cone(inner, 0.06, 0.15, s * 0.2, 0.29, 0.03, 0, -s * 0.3, 8));
+    } else if (L.ears === "flop") {
+      const e = ball(earC, 0.1, s * 0.31, 0.12, 0.0, 0.5, 1.5, 1);
+      e.rotation.z = s * 0.5;
+      head.add(e);
+    }
+  }
+
+  const dark = (r, x, y, z) => { const n = new THREE.Mesh(SPHERE_LOW, GLOSSY_DARK); n.scale.set(r * 1.15, r * 0.85, r); n.position.set(x, y, z); head.add(n); };
+  if (L.face === "muzzle") {
+    head.add(ball(L.muzzle !== undefined ? coat(L.muzzle) : fur, 0.13, 0, -0.08, 0.23, 1, 0.8, 0.9));
+    if (L.redNose) { const n = new THREE.Mesh(SPHERE_MID, shiny(0xff4a5a, 1.6)); n.scale.setScalar(0.055); n.position.set(0, -0.04, 0.36); head.add(n); }
+    else dark(0.035, 0, -0.04, 0.35);
+    smile(head, 0.045, 0, -0.1, 0.335);
+  } else if (L.face === "beak") {
+    head.add(cone(K.gloss(L.beak), 0.07, 0.15, 0, -0.04, 0.33, 1.57, 0, 8));
+  } else if (L.face === "bill") {
+    head.add(ball(K.gloss(L.beak), 0.1, 0, -0.06, 0.32, 1.25, 0.42, 1));
+  } else if (L.face === "snout") {
+    head.add(ball(K.skin(0xff8fb0), 0.1, 0, -0.06, 0.29, 1.15, 0.85, 0.8));
+    dark(0.018, -0.035, -0.06, 0.375); dark(0.018, 0.035, -0.06, 0.375);
+  } else if (L.face === "smile") {
+    smile(head, 0.07, 0, -0.08, 0.3);
+  }
+
+  if (L.tuft !== undefined) for (let i = 0; i < 3; i++) head.add(ball(coat(L.tuft), 0.05, (i - 1) * 0.05, 0.33, 0, 0.7, 1.5 - Math.abs(i - 1) * 0.4, 0.7));
+  if (L.nubs !== undefined) for (const s of [-1, 1]) head.add(ball(K.wood(L.nubs), 0.035, s * 0.09, 0.32, 0.02, 1, 1.6, 1));
+  if (L.spots !== undefined) for (const [x, y, z] of [[-0.2, 0.52, -0.2], [0.12, 0.58, -0.24], [0.24, 0.4, -0.2], [-0.08, 0.36, -0.31], [-0.27, 0.3, -0.1], [0.3, 0.24, -0.08]]) g.add(ball(K.soft(L.spots), 0.04, x, y, z, 1, 1, 0.5));
+  if (L.antlers !== undefined) {
+    const bone = K.wood(L.antlers);
+    for (const s of [-1, 1]) {
+      head.add(tube(bone, [[s * 0.1, 0.27, 0], [s * 0.17, 0.42, -0.02], [s * 0.26, 0.54, -0.02]], 0.03, 0.016, 6, 6));
+      head.add(tube(bone, [[s * 0.16, 0.4, -0.02], [s * 0.11, 0.5, 0], [s * 0.1, 0.58, 0.01]], 0.022, 0.013, 5, 6));
+    }
+  }
+  if (L.horn !== undefined) {
+    const h = cone(shiny(L.horn, 0.9), 0.055, 0.3, 0, 0.37, 0.14, 0.35, 0, 10);
+    head.add(h);
+  }
+  if (L.mane) {
+    RAINBOW.forEach((c, i) => head.add(ball(K.hair(c), 0.075, 0, 0.3 - i * 0.085, -0.2 - Math.sin(i * 0.7) * 0.06, 1.1, 1, 1)));
+  }
+  if (L.antennae !== undefined) for (const s of [-1, 1]) {
+    head.add(tube(K.gloss(L.antennae), [[s * 0.08, 0.28, 0.05], [s * 0.12, 0.4, 0.08], [s * 0.17, 0.46, 0.12]], 0.014, 0.012, 5, 5));
+    head.add(ball(K.gloss(L.antennae), 0.035, s * 0.17, 0.47, 0.12));
+  }
+  if (L.dots !== undefined) for (const [x, y, z] of [[-0.2, 0.5, -0.2], [0.2, 0.5, -0.2], [0, 0.32, -0.33], [-0.27, 0.26, -0.12], [0.27, 0.26, -0.12], [0, 0.62, -0.18]]) g.add(ball(K.gloss(L.dots), 0.055, x, y, z, 1, 1, 0.45));
+  if (L.wool) {
+    const wool = K.cloud(0xffffff);
+    for (const [x, y, z, r] of [[0, 0.3, -0.05, 0.14], [-0.14, 0.26, 0, 0.11], [0.14, 0.26, 0, 0.11], [0, 0.25, 0.1, 0.1]]) head.add(ball(wool, r, x, y, z));
+    for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; g.add(ball(wool, 0.13, Math.cos(a) * 0.27, 0.3 + (i % 3) * 0.12, Math.sin(a) * 0.24 - 0.03)); }
+  }
+  if (L.shell !== undefined) {
+    g.add(ball(K.gloss(L.shell), 0.36, 0, 0.36, -0.13, 1, 1.02, 0.72));
+    for (const [x, y] of [[0, 0.5], [-0.15, 0.32], [0.15, 0.32]]) g.add(ball(K.gloss(0x7cc46a), 0.08, x, y, -0.36, 1, 1, 0.4));
+  }
+  if (L.scarf !== undefined) {
+    const sc = torus(K.fabric(L.scarf), 0.235, 0.06, 0, 0.62, 0.02);
+    sc.rotation.x = Math.PI / 2;
+    g.add(sc);
+    g.add(ball(K.fabric(L.scarf), 0.065, 0.14, 0.5, 0.24, 0.8, 1.9, 0.6));
+  }
+
+  const tipC = L.tip !== undefined ? coat(L.tip) : fur;
+  if (L.tail === "puff") g.add(ball(L.wool ? K.cloud(0xffffff) : coat(0xffffff), 0.09, 0, 0.16, -0.31));
+  else if (L.tail === "curl") g.add(torus(K.skin(0xff8fb0), 0.05, 0.018, 0, 0.2, -0.33));
+  else if (L.tail === "bush") {
+    g.add(tube(fur, [[0, 0.14, -0.26], [0.05, 0.22, -0.46], [0.08, 0.4, -0.58], [0.06, 0.56, -0.6]], 0.1, 0.13, 10, 8));
+    g.add(ball(tipC, 0.13, 0.06, 0.6, -0.6, 1, 1.15, 1));
+  } else if (L.tail === "swirl") {
+    g.add(tube(fur, [[0, 0.12, -0.26], [0, 0.2, -0.5], [0, 0.5, -0.62], [0, 0.8, -0.52], [0, 0.86, -0.34], [0, 0.74, -0.28]], 0.1, 0.15, 14, 8));
+  } else if (L.tail === "thick") {
+    g.add(tube(fur, [[0, 0.12, -0.24], [0.06, 0.08, -0.44], [0.12, 0.07, -0.62], [0.14, 0.08, -0.74]], 0.11, 0.04, 8, 8));
+  } else if (L.tail === "ring") {
+    for (let i = 0; i < 5; i++) g.add(ball(i % 2 ? tipC : fur, 0.115 - i * 0.008, 0.03 * i, 0.16 + i * 0.1, -0.3 - i * 0.075 + i * i * 0.012, 1, 0.75, 1));
+  } else if (L.tail === "mane") {
+    RAINBOW.forEach((c, i) => g.add(tube(K.hair(c), [[0, 0.2, -0.28], [(i - 2.5) * 0.05, 0.22, -0.46], [(i - 2.5) * 0.09, 0.12, -0.6]], 0.035, 0.02, 6, 5)));
+  }
+
+  g.userData = U;
+  fuse(g);
+  g.userData = U;
+  return g;
+}
+
 function setFriendHelped(friend, helped) {
   const U = friend.userData;
   U.helped = helped;

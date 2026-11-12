@@ -3,6 +3,7 @@
    Core: tiny helpers, saved progress, sound
    ===================================================================== */
 
+const VERSION = "2.1";
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -40,6 +41,8 @@ function freshSave() {
     helper: true,         // glow the next key when stuck
     brewMode: "mix",      // brewing: "mix" (the last word is a star challenge), "look" (always shown first) or "hear" (all challenges)
     aced: 0,              // star challenges spelled with no peeking or help, ever
+    critters: {},         // woodland visitor id -> true once it has popped out to say hello
+    dry: 0,               // levels played in a row with no new visitor (the next one is then certain)
     gfx: "auto",          // graphics: "auto", "best", "medium" or "fast"
     unlockAll: false,
   };
@@ -49,7 +52,7 @@ function loadSave() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (s && typeof s === "object") {
-      const merged = { ...fresh, ...s, look: { ...fresh.look, ...(s.look || {}) } };
+      const merged = { ...fresh, ...s, look: { ...fresh.look, ...(s.look || {}) }, critters: { ...(s.critters || {}) } };
       // older saves had a plain on/off switch called "speak"
       if (s.voice === undefined && s.speak === false) merged.voice = "off";
       delete merged.speak;
