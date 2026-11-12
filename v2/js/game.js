@@ -174,10 +174,70 @@ function rebuildCrew() {
     crew.push(m);
   });
 }
+
+/* Woodland visitors: a couple of the little animals already found tag along from the start,
+   and now and then one pops out of a hiding place in the middle of a level. */
+const visitors = [];
+const VISITOR_SIZE = 0.66;
+function addVisitor(id, at) {
+  const m = buildCritter(id);
+  m.userData.to = new THREE.Vector3();
+  m.userData.grow = at ? 0 : 1;
+  if (at) m.position.copy(at); else m.position.set(-14 - visitors.length * 1.2, 0, 2.5);
+  m.scale.setScalar(at ? 0.01 : VISITOR_SIZE);
+  scene.add(m);
+  visitors.push(m);
+  return m;
+}
+function clearVisitors() {
+  for (const m of visitors) discard(m);
+  visitors.length = 0;
+}
+function gatherVisitors() {
+  clearVisitors();
+  shuffle(Object.keys(save.critters).filter(id => CRITTER_BY_ID[id])).slice(0, 2).forEach(id => addVisitor(id));
+}
+/** A star has just gone home: sometimes a little animal was hiding in there too. */
+function maybeVisitor(star) {
+  if (flight.visited || flight.sent >= flight.need) return;          // one surprise a level, and not on the last star
+  const here = CRITTERS.filter(c => c.place === flight.level.place);
+  const plainFound = here.filter(c => !c.shy).every(c => save.critters[c.id]);
+  const fresh = here.filter(c => !save.critters[c.id] && (!c.shy || plainFound || flight.level.step >= 3));
+  const along = visitors.map(m => m.userData.critter);
+  const old = CRITTERS.filter(c => save.critters[c.id] && !along.includes(c.id));
+  const left = flight.need - flight.sent;
+  // someone new is likelier than an old friend, and certain by the end of a level if the last one brought nobody new
+  let c = null;
+  if (fresh.length && (Math.random() < 0.17 || (left <= 2 && save.dry >= 1))) c = fresh[0].shy ? fresh[0] : pick(fresh.filter(x => !x.shy));
+  else if (old.length && Math.random() < 0.09) c = pick(old);
+  if (!c) return;
+  flight.visited = true;
+  const isNew = !save.critters[c.id];
+  save.critters[c.id] = true;
+  if (isNew) flight.newCritters.push(c.id);
+  const at = star.spot.getWorldPosition(new THREE.Vector3());
+  at.y = 0;
+  setTimeout(() => {
+    if (mode !== "flight" && mode !== "toBrew") return;
+    at.x -= 0.4;
+    const m = addVisitor(c.id, at);
+    layoutCrew();
+    sfx.reward();
+    hearts(at.clone().setY(1.1), 7);
+    burst(at.clone().setY(0.8), [0xffe27a, 0xffffff, 0xffc2e2], 18, 2.6);
+    m.userData.hop = 1;
+    banner(`${c.emoji} ${c.name} the ${c.animal}<small>${isNew ? "A new friend wants to come too!" : "wants to come too!"}</small>`, 3400);
+    say(critterHello(c), { queue: true });
+  }, 650);
+}
+
 function layoutCrew() {
   const staged = mode === "map" || mode === "brew" || mode === "cutscene" || mode === "complete" || (mode === "toBrew" && flight.arriving);
-  const shown = crew.filter(m => !(staged && m.userData.place === currentPlace));
-  crew.forEach(m => { m.visible = shown.includes(m) && mode !== "friends" && mode !== "wardrobe" && mode !== "story"; });
+  const hidden = mode === "friends" || mode === "wardrobe" || mode === "story";
+  visitors.forEach(m => { m.visible = !hidden; });
+  // visitors get the spots nearest the witch; they are the news
+  const shown = [...visitors, ...crew.filter(m => !(staged && m.userData.place === currentPlace))];
+  crew.forEach(m => { m.visible = shown.includes(m) && !hidden; });
   shown.forEach((m, i) => {
     // the audience gathers behind the witch, out of the way of the friend being helped
     if (staged) m.userData.to.set(STAGE_X - 4.3 - Math.floor(i / 3) * 1.15 - (i % 3 === 1 ? 0.35 : 0), 0, [1.3, -0.3, -1.9][i % 3]);
@@ -192,6 +252,16 @@ function updateCrew(dt) {
     m.position.z += (m.userData.to.z - m.position.z) * Math.min(1, dt * 2.5);
     m.rotation.y = mode === "flight" || mode === "title" ? 0.85 : 0.7;
     animateFriend(m, clock, dt, lively);
+  }
+  for (const m of visitors) {
+    if (!m.visible) continue;
+    const U = m.userData;
+    if (U.grow < 1) { U.grow = Math.min(1, U.grow + dt * 1.6); m.scale.setScalar(Math.max(0.01, VISITOR_SIZE * easeOutBack(U.grow))); }
+    const k = Math.min(1, dt * (U.grow < 1 ? 0.6 : 2.2));
+    m.position.x += (U.to.x - m.position.x) * k;
+    m.position.z += (U.to.z - m.position.z) * k;
+    m.rotation.y = mode === "flight" || mode === "title" ? 0.85 : 0.7;
+    animateFriend(m, clock, dt, lively * 1.15);
   }
 }
 
@@ -288,8 +358,8 @@ function renderWord(star) {
   const isTarget = flight.target === star;
   const hinted = flight.nudge && (isTarget || (!flight.target && star === nudgeStar()));
   const cls = (i) => i < star.typed ? "done" : (i === star.typed && (isTarget || hinted) ? "next" + (hinted ? " nudge" : "") : "");
-  const pic = star.word.emoji ? `<span class="pic">${star.word.emoji}</span>` : "";
-  star.label.firstChild.innerHTML = pic + wordHTML(star.word, cls, star.typed);
+  // no picture here: with nothing to guess from, the word has to be read. The picture pops out once it is spelled.
+  star.label.firstChild.innerHTML = wordHTML(star.word, cls, star.typed);
   star.label.classList.toggle("target", isTarget);
 }
 function renderWords() { flight.stars.forEach(s => { if (s.state !== "done") renderWord(s); }); }
@@ -446,7 +516,13 @@ function sendHome(star) {
   star.swerve = rand(-2, 2);
   scene.attach(star.mesh);
   star.mesh.position.copy(star.from);
-  star.label.style.opacity = "0";
+  if (star.word.emoji) {
+    // the reward for reading it: now you can see what the word was
+    star.label.firstChild.innerHTML = `<span class="pic reveal">${star.word.emoji}</span>`;
+    star.label.classList.add("revealed");
+    star.label.style.transform += " translateY(-26px)";
+    setTimeout(() => { star.label.style.opacity = "0"; }, 900);
+  } else star.label.style.opacity = "0";
   star.spot.userData.rustle = 0.4;
   flight.target = null;
   setNudge(false);
@@ -460,6 +536,7 @@ function sendHome(star) {
   flight.played.push({ word: star.word, errors: star.errors });
   save.totalStars++;
   noteWord(star.word.text, star.errors <= 1);
+  maybeVisitor(star);
   persist();
   setTimeout(renderJar, 500);
 
@@ -549,14 +626,15 @@ function startLevel(n) {
   leaveEverything();
   clearHomeStars();
   currentPlace = level.place;
-  setBiome(level.place);
+  setBiome(level.place, true, level.step);               // a fresh lay-out and a different time of day for every level
   setStage(level.place);
   stage.visible = false;
   Object.assign(flight, {
     level, queue: buildQueue(level), target: null, pending: [], sent: 0, missed: 0,
     need: level.stars, lastLane: -1, idle: 0, nudge: false, arriving: false, jar: [], played: [],
-    starsBefore: starCount(),
+    starsBefore: starCount(), visited: false, newCritters: [],
   });
+  gatherVisitors();
   for (let i = 0; i < level.maxOnScreen; i++) flight.pending.push(1.6 + i * Math.min(4, level.baseLife * 0.3));
   mode = "flight";
   paused = false;

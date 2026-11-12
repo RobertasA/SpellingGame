@@ -67,6 +67,32 @@ const PLACES = [
   },
 ];
 
+/* Woodland visitors: little animals that pop out while flying and come along for the ride.
+   Three live in each place (the third is shyer); finding them all is a reason to explore. */
+const CRITTERS = [
+  { id: "bunny",     name: "Clover",  animal: "bunny",      emoji: "🐰", place: 0 },
+  { id: "chick",     name: "Pippin",  animal: "chick",      emoji: "🐥", place: 0 },
+  { id: "piglet",    name: "Truffle", animal: "piglet",     emoji: "🐷", place: 0, shy: true },
+  { id: "fox",       name: "Rusty",   animal: "fox cub",    emoji: "🦊", place: 1 },
+  { id: "squirrel",  name: "Nutkin",  animal: "squirrel",   emoji: "🐿️", place: 1 },
+  { id: "badger",    name: "Stripe",  animal: "badger",     emoji: "🦡", place: 1, shy: true },
+  { id: "duckling",  name: "Puddle",  animal: "duckling",   emoji: "🦆", place: 2 },
+  { id: "otter",     name: "Otto",    animal: "otter",      emoji: "🦦", place: 2 },
+  { id: "turtle",    name: "Shelly",  animal: "turtle",     emoji: "🐢", place: 2, shy: true },
+  { id: "fawn",      name: "Dapple",  animal: "fawn",       emoji: "🦌", place: 3 },
+  { id: "ladybird",  name: "Dotty",   animal: "ladybird",   emoji: "🐞", place: 3 },
+  { id: "raccoon",   name: "Bandit",  animal: "raccoon",    emoji: "🦝", place: 3, shy: true },
+  { id: "penguin",   name: "Waddle",  animal: "penguin",    emoji: "🐧", place: 4 },
+  { id: "polarbear", name: "Snowy",   animal: "polar bear", emoji: "🐻‍❄️", place: 4 },
+  { id: "reindeer",  name: "Comet",   animal: "reindeer",   emoji: "🦌", place: 4, shy: true },
+  { id: "lamb",      name: "Woolly",  animal: "cloud lamb", emoji: "🐑", place: 5 },
+  { id: "panda",     name: "Bamboo",  animal: "panda",      emoji: "🐼", place: 5 },
+  { id: "unicorn",   name: "Twinkle", animal: "unicorn",    emoji: "🦄", place: 5, shy: true },
+];
+const CRITTER_BY_ID = Object.fromEntries(CRITTERS.map(c => [c.id, c]));
+/** What is said (and shown) when a visitor pops out. */
+function critterHello(c) { return `${c.name} the ${c.animal} wants to come too!`; }
+
 /* The fixed lines of the opening story (the two that mention the witch's name are built in ui.js).
    voice.js reads these too, so the recording list can't drift from what is said. */
 const STORY_LINES = {

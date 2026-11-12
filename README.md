@@ -23,6 +23,8 @@ Every level has two parts:
 1. **Fly** — a lost star peeks out of a pumpkin, a mushroom or a snowdrift, holding a word.
    Read it and type it; the star whooshes back up into the sky. Each right letter rings one note
    higher than the last. A star that isn't spelled in time just hides and comes back later.
+   The word is shown on its own, with no picture to guess from — its picture pops out as the
+   reward once it has been spelled.
 2. **Brew** — land beside the cauldron. *Look* at a word, it is *covered*, then *build it* from
    sound tiles (`sh` `i` `p`) and *check*. Three words make one potion ingredient — and the last
    of the three is a **⭐ star challenge**: the word is never shown. The child hears it, sees its
@@ -33,10 +35,18 @@ scared of the dark, Bramble the hedgehog is cold, Lily the frog has lost her cro
 shy, Hoot the owl has a sore wing — and in the last place, Ember the baby dragon needs a Get Well
 Potion for that sneezy cold. Everyone you help comes along on the rest of the adventure.
 
+Now and then a **woodland visitor** was hiding with the star — Clover the bunny, Rusty the fox cub,
+Waddle the penguin… — and hops along for the rest of the level. Eighteen of them live in the wood,
+three in each place (one of each three is shy). The map shows who has been found and how many are
+still hiding, and a couple of the ones already found turn up at the start of every level.
+
 ### What's in it
 
 - **30 levels in 6 places** (Cottage Garden, Pumpkin Patch, Misty Pond, Mushroom Glade, Frosty
   Peak, Moon Castle), each with its own sky, scenery and friend. About 650 words.
+- **No two levels alike**: each of a place's five levels is flown at a different time of day
+  (evening, golden hour, twilight, starry night, dawn) and its scenery is laid out afresh.
+- **18 woodland visitors to find**, who pop out in the middle of a level and come along.
 - **Sound buttons** under every word — a dot for one letter, a bar for a digraph (`sh`, `igh`),
   an arc for a split digraph (`a-e`) — the same marking children see in phonics lessons.
 - **Read aloud — or not**: the story, each word when a star goes home, and the word to spell when

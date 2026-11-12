@@ -102,6 +102,7 @@ function goTitle() {
   setBiome(currentPlace);
   stage.visible = false;
   rebuildCrew();
+  gatherVisitors();
   layoutCrew();
   setSkyFullness(skyFullness());
   showScreen("titleScreen");
@@ -142,13 +143,20 @@ function potionRowHTML(p, freshStep = -1) {
   return html;
 }
 
+/** Who has popped out to say hello in this place — and how many are still hiding. */
+function visitorRowHTML(p) {
+  const slots = CRITTERS.filter(c => c.place === p).map(c => save.critters[c.id]
+    ? `<span class="slot got" title="${c.name} the ${c.animal}">${c.emoji}</span>`
+    : `<span class="slot hiding" title="Someone is still hiding here…">?</span>`).join("");
+  return `<span class="visitors"><span class="label-text">🐾 Visitors</span>${slots}</span>`;
+}
 function renderMap() {
   const p = currentPlace, place = PLACES[p];
   $("mapEmoji").textContent = place.emoji;
   $("mapName").textContent = place.name;
   $("mapStage").textContent = place.stage;
   $("mapPlea").textContent = save.helped[place.id] ? place.thanks : `${place.plea} ${place.need}`;
-  $("mapPotion").innerHTML = potionRowHTML(p);
+  $("mapPotion").innerHTML = potionRowHTML(p) + visitorRowHTML(p);
   $("mapPrev").disabled = p === 0;
   $("mapNext").disabled = p === PLACES.length - 1;
   const row = $("mapLevels");
@@ -193,6 +201,9 @@ function showComplete() {
   $("completeStars").innerHTML = [1, 2, 3].map(i => `<span class="${i <= stars ? "" : "dim"}">⭐</span>`).join("");
   let stats = `⭐ Stars sent home: <b>${flight.sent}</b>`;
   if (flight.missed) stats += `<br>💫 Stars that hid: <b>${flight.missed}</b>`;
+  for (const id of flight.newCritters) { const c = CRITTER_BY_ID[id]; stats += `<br>${c.emoji} New friend: <b>${c.name}</b> the ${c.animal}!`; }
+  // something to come back for
+  if (!flight.newCritters.length && CRITTERS.some(c => c.place === level.place && !save.critters[c.id])) stats += `<br>🐾 Someone is still hiding in the ${place.name}…`;
   if (brew.aced.length) stats += `<br>🌟 Star challenge: you spelled <b style="font-family:var(--word-font)">${brew.aced.join(", ")}</b> all by yourself!`;
   if (placeDone(level.place) && helped) stats += `<br>${FRIEND_INFO[place.friend].emoji} <b>${place.friendName}</b> is your friend!`;
   $("completeStats").innerHTML = stats;
@@ -342,6 +353,8 @@ function openFriends() {
   $("friendsBar").classList.add("active");
   const n = PLACES.filter(p => save.helped[p.id]).length;
   $("friendsTitle").textContent = `💛 My friends · ${n} / ${PLACES.length}`;
+  $("visitorsPill").innerHTML = `🐾 Visitors · ${CRITTERS.filter(c => save.critters[c.id]).length} / ${CRITTERS.length}<br>` +
+    CRITTERS.map(c => save.critters[c.id] ? `<span title="${c.name} the ${c.animal}">${c.emoji}</span>` : `<span class="hiding">?</span>`).join("");
   const narrow = aspect() < 1;
   PLACES.forEach((place, i) => {
     const helped = !!save.helped[place.id];
@@ -501,6 +514,7 @@ function renderGrown() {
     ["Unlock every level and outfit", () => save.unlockAll ? "On" : "Off", () => { save.unlockAll = !save.unlockAll; }],
   ];
   renderVoiceSetting();
+  $("version").textContent = `Little Star Witch ${VERSION}`;
   const box = $("settings");
   box.innerHTML = "";
   for (const [label, value, toggle] of settings) {
