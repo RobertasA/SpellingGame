@@ -18,6 +18,10 @@
 
 <!-- title -->
 <div class="overlay active" id="titleScreen">
+  <div class="top-tools">
+    <button class="icon-btn voice-toggle" title="Reading aloud" aria-label="Reading aloud on or off">🗣️</button>
+    <button class="icon-btn mute-toggle" title="Sound" aria-label="Sound on or off">🔊</button>
+  </div>
   <div class="title-wrap">
     <h1><span class="t1">Little</span> <span class="t2">Star Witch</span></h1>
     <p class="tagline">A spelling adventure</p>
@@ -56,8 +60,8 @@
     <div class="pill" id="jar"></div>
   </div>
   <div class="hud-right">
-    <button class="icon-btn" id="voiceBtn" title="Say the words out loud">🗣️</button>
-    <button class="icon-btn" id="muteBtn" title="Sound">🔊</button>
+    <button class="icon-btn voice-toggle" id="voiceBtn" title="Reading aloud">🗣️</button>
+    <button class="icon-btn mute-toggle" id="muteBtn" title="Sound">🔊</button>
     <button class="icon-btn" id="pauseBtn" title="Pause">⏸️</button>
   </div>
 </div>
@@ -111,6 +115,10 @@
   <div class="card">
     <h2>Having a little rest 🌙</h2>
     <p class="sub">The stars will wait for you.</p>
+    <div class="btn-row tools-row">
+      <button class="icon-btn voice-toggle" title="Reading aloud" aria-label="Reading aloud on or off">🗣️</button>
+      <button class="icon-btn mute-toggle" title="Sound" aria-label="Sound on or off">🔊</button>
+    </div>
     <div class="btn-row">
       <button class="big mint" id="resumeBtn">Keep going</button>
       <button class="ghost" id="quitBtn">Stop</button>
@@ -144,6 +152,7 @@
       phonics teaching in Reception and the Year 1 and Year 2 spelling content of the National Curriculum for England.
       Nothing can be lost or failed — a star that isn't spelled in time simply hides and comes back.</p>
     <h3>Settings</h3>
+    <div class="voice-setting" id="voiceSetting"></div>
     <div class="settings" id="settings"></div>
     <h3>Words to practise again</h3>
     <p class="note" id="wobbly"></p>
@@ -161,7 +170,10 @@
   if (!window.THREE) document.getElementById("loading").textContent = "The little witch couldn't fly in 😢 — some of the game files are missing.";
 </script>
 <script src="js/words.js"></script>
+<script src="voice/manifest.js"></script>
 <script src="js/core.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/textures.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/models.js"></script>
 <script src="js/world.js"></script>

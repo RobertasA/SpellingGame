@@ -67,6 +67,14 @@ const PLACES = [
   },
 ];
 
+/* The fixed lines of the opening story (the two that mention the witch's name are built in ui.js).
+   voice.js reads these too, so the recording list can't drift from what is said. */
+const STORY_LINES = {
+  tickle: "One night, a baby dragon had a very tickly nose…",
+  achoo: "Ah… ah… ACHOO!",
+  fall: "All the stars fell out of the sky, and hid in the Whispering Wood!",
+};
+
 const LEVEL_DEFS = [
   /* ---------------- 1 · Cottage Garden — first sounds, CVC words ---------------- */
   { focus: "s a t p i n", nc: "Phase 2 phonics: the first six letter sounds, blending and segmenting VC and CVC words.",

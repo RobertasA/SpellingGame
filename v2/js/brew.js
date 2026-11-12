@@ -3,11 +3,18 @@
    Brewing: look at a word, cover it, build it from its sounds, check.
    Three words make one potion ingredient. After five ingredients the
    friend gets their potion.
+
+   A word can also be a "star challenge": it is never shown. The child
+   hears it and sees its picture, then writes it letter by letter on a
+   full keyboard — no sound tiles to choose from.
    ===================================================================== */
 
 const brew = {
   words: [], idx: 0, phase: "idle", word: null,
   slot: 0, inG: 0, wrong: 0, slips: 0, peeks: 0, tiles: [], timers: [],
+  dictate: [],            // for each word: is it a star challenge?
+  challenge: false,       // the word being spelled now is one
+  keys: {}, helped: false, aced: [],
 };
 const START_BREW = 0x8cf0a8;
 
@@ -36,10 +43,30 @@ function chooseBrewWords() {
   return out.sort((a, b) => a.text.length - b.text.length);
 }
 
+/** A word can be a challenge if the child can tell which word it is without seeing it. */
+function canDictate(w) { return !!w.emoji || canSay(w.text); }
+/** Decide which of the words are star challenges (and put the challenge last when there is just one). */
+function chooseChallenges(words) {
+  const style = save.brewMode || "mix";
+  if (style === "hear") return words.map(canDictate);
+  const flags = words.map(() => false);
+  if (style !== "mix") return flags;
+  // a word with a picture is the friendliest one to be asked for
+  const able = words.filter(canDictate);
+  const star = able.find(w => w.emoji) || able[0];
+  if (!star) return flags;
+  words.splice(words.indexOf(star), 1);
+  words.push(star);
+  flags[words.length - 1] = true;
+  return flags;
+}
+
 function startBrew() {
   mode = "brew";
   clearBrewTimers();
-  Object.assign(brew, { words: chooseBrewWords(), idx: 0, phase: "idle", word: null });
+  Object.assign(brew, { words: chooseBrewWords(), idx: 0, phase: "idle", word: null, challenge: false, aced: [] });
+  brew.dictate = chooseChallenges(brew.words);
+  $("brewUI").classList.remove("challenge");
   setBrewColor(cauldron, START_BREW);
   showPanel("brewUI");
   $("hud").classList.add("active");
@@ -59,13 +86,17 @@ function startBrew() {
     caption(save.helped[place.id] ? "Time to brew!" : `Time to brew for ${place.friendName}!`, 1800, true);
     wait = 1900;
   }
-  later(brewLook, wait);
+  later(brewNext, wait);
+}
+function brewNext() {
+  if (brew.dictate[brew.idx]) brewHear(); else brewLook();
 }
 
 function renderBrewDots() {
   const place = PLACES[currentPlace];
   const emoji = place.ingredients[flight.level.step];
-  $("brewDots").innerHTML = brew.words.map((_, i) => `<span class="${i < brew.idx ? "got" : ""}">${i < brew.idx ? emoji : ""}</span>`).join("");
+  $("brewDots").innerHTML = brew.words.map((_, i) =>
+    `<span class="${i < brew.idx ? "got" : brew.dictate[i] ? "star" : ""}">${i < brew.idx ? emoji : brew.dictate[i] ? "⭐" : ""}</span>`).join("");
 }
 
 function renderSlots() {
@@ -88,16 +119,53 @@ function renderSlots() {
 function brewLook() {
   if (mode !== "brew") return;
   const w = brew.words[brew.idx];
-  Object.assign(brew, { word: w, phase: "look", slot: 0, inG: 0, wrong: 0, slips: 0, peeks: 0, tiles: [] });
+  Object.assign(brew, { word: w, phase: "look", challenge: false, slot: 0, inG: 0, wrong: 0, slips: 0, peeks: 0, tiles: [] });
+  $("brewUI").classList.remove("challenge");
   $("brewPic").textContent = w.emoji;
   $("brewTiles").innerHTML = "";
-  $("brewTiles").classList.add("hidden");
+  $("brewTiles").className = "hidden";
   $("brewPeek").disabled = true;
   renderSlots();
   sfx.pop();
   say(w.text, { rate: 0.75 });
   const lookTime = (flight.level.place === 0 ? 2400 : 2000) + w.text.length * 260;
   later(brewCover, lookTime);
+}
+
+/** Star challenge: the word stays hidden. Hear it, see its picture, write it. */
+function brewHear() {
+  if (mode !== "brew") return;
+  const w = brew.words[brew.idx];
+  Object.assign(brew, { word: w, phase: "spell", challenge: true, slot: 0, inG: 0, wrong: 0, slips: 0, peeks: 0, tiles: [], keys: {}, helped: false });
+  $("brewUI").classList.add("challenge");
+  $("brewPic").textContent = w.emoji || "👂";
+  // a whole keyboard to write with, laid out like the one used for flying
+  const box = $("brewTiles");
+  box.innerHTML = "";
+  box.className = "keys";
+  for (const row of KBD_LAYOUTS[save.kbd] || KBD_LAYOUTS.qwerty) {
+    const r = document.createElement("div");
+    r.className = "row";
+    for (const ch of row) {
+      const b = document.createElement("button");
+      b.textContent = ch;
+      if ("aeiou".includes(ch)) b.className = "vowel";
+      b.addEventListener("pointerdown", (e) => { e.preventDefault(); startMusic(); handleLetter(ch); });
+      r.appendChild(b);
+      brew.keys[ch] = b;
+    }
+    box.appendChild(r);
+  }
+  $("brewPeek").disabled = false;
+  renderSlots();
+  applyView();                                    // the panel is taller now
+  sfx.reward();
+  const heard = canSay(w.text);
+  if (!save.tips.hear) {
+    save.tips.hear = 1; persist();
+    caption(heard ? "⭐ Star challenge! This word is hiding. Listen… and spell it yourself!" : "⭐ Star challenge! This word is hiding. Can you spell it yourself?", 5200, true);
+  } else caption(heard ? "⭐ Star challenge! Listen… and spell it." : "⭐ Star challenge! Can you spell it?", 2600, true);
+  say(w.text, { rate: 0.75, queue: true });
 }
 
 function makeTiles(w) {
@@ -125,7 +193,7 @@ function brewCover() {
   brew.tiles = makeTiles(brew.word);
   const box = $("brewTiles");
   box.innerHTML = "";
-  box.classList.remove("hidden");
+  box.className = "";
   brew.tiles.forEach((tile, i) => {
     const b = document.createElement("button");
     b.textContent = tile.t;
@@ -153,7 +221,15 @@ function brewWrong(tileEl) {
     tileEl.classList.add("no");
     setTimeout(() => tileEl.classList.remove("no"), 400);
   }
-  if (brew.wrong >= 2) {
+  if (brew.challenge) {
+    // say it again after two slips, and light up the next letter after three — nobody gets stuck
+    if (brew.wrong === 2) say(brew.word.text, { rate: 0.7 });
+    if (brew.wrong >= 3) {
+      const key = brew.keys[brew.word.graphemes[brew.slot].t[brew.inG]];
+      if (key) key.classList.add("glow");
+      brew.helped = true;
+    }
+  } else if (brew.wrong >= 2) {
     // show which sound comes next — nobody gets stuck
     const need = brew.word.graphemes[brew.slot].t;
     const tile = brew.tiles.find(t => !t.used && t.t === need);
@@ -186,6 +262,7 @@ function brewLetter(ch) {
   if (brew.phase !== "spell") return;
   const g = brew.word.graphemes[brew.slot].t;
   if (g[brew.inG] === ch) {
+    if (brew.challenge) { brew.keys[ch].classList.remove("glow"); brew.wrong = 0; }
     brew.inG++;
     if (brew.inG >= g.length) fillSlot();
     else { sfx.tick(); renderSlots(); }
@@ -214,6 +291,16 @@ function brewWordDone() {
   $("brewPeek").disabled = true;
   const w = brew.word;
   noteWord(w.text, brew.slips === 0 && brew.peeks === 0);
+  // a challenge word written with no peeking and no lit-up letters earns a star of its own
+  const aced = brew.challenge && brew.peeks === 0 && !brew.helped;
+  if (aced) {
+    brew.aced.push(w.text);
+    save.aced = (save.aced || 0) + 1;
+    toast("⭐ Super speller!");
+    witch.userData.wandTip.getWorldPosition(tmpV2);
+    burst(tmpV2.clone(), [0xffe27a, 0xffffff, 0xffc2e2], 26, 3.4);
+    later(() => sfx.reward(), 350);
+  }
   persist();
   sfx.collect();
   say(w.text);
@@ -247,7 +334,7 @@ function brewWordDone() {
   }, 720);
   later(() => {
     if (brew.idx >= brew.words.length) finishBrew();
-    else brewLook();
+    else brewNext();
   }, 1900);
 }
 

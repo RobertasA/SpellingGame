@@ -197,7 +197,7 @@ function showComplete() {
   $("completeStats").innerHTML = stats;
   $("completePotion").innerHTML = potionRowHTML(level.place, level.step);
   const unlocks = newUnlocks(flight.starsBefore, starCount());
-  $("completeUnlocks").innerHTML = unlocks.join("<br>");
+  $("completeUnlocks").innerHTML = unlocks.length ? "You found something new to wear!<br>" + unlocks.join("<br>") : "";
   $("nextBtn").style.display = last ? "none" : "";
   showScreen("completeScreen");
   applyView();
@@ -387,7 +387,7 @@ function introSteps() {
   return [
     { text: `This is ${save.name}, a little witch, and her cat, ${cat}.`, speed: 1.2, view: null,
       run() { witchAnim.hop = 1; setSkyFullness(1); } },
-    { text: "One night, a baby dragon had a very tickly nose…", speed: 0,
+    { text: STORY_LINES.tickle, speed: 0,
       view: () => [new THREE.Vector3(1.5, 2.6, 12.5), new THREE.Vector3(2.4, 1.3, 0)],
       run() {
         dragon = buildFriend("dragon");
@@ -398,7 +398,7 @@ function introSteps() {
         story.actors.push(dragon);
         witchAnim.override = new THREE.Vector3(-1.6, 2.0, 0.6);
       } },
-    { text: "Ah… ah… ACHOO!", speed: 0,
+    { text: STORY_LINES.achoo, speed: 0,
       view: () => [new THREE.Vector3(1.5, 2.6, 12.5), new THREE.Vector3(2.4, 1.3, 0)],
       run() {
         sfx.sneeze();
@@ -413,7 +413,7 @@ function introSteps() {
           for (let i = 0; i < 12; i++) emit({ pos: p, vel: new THREE.Vector3(rand(-5, -1), rand(0.5, 3), rand(-1, 1)), color: 0xffffff, size: rand(0.6, 1.2), life: 1, tex: dotTex, grow: 1.5, drag: 0.93 });
         }, 350);
       } },
-    { text: "All the stars fell out of the sky, and hid in the Whispering Wood!", speed: 0.6, view: null,
+    { text: STORY_LINES.fall, speed: 0.6, view: null,
       run() { witchAnim.override = null; } },
     { text: `Can you help ${save.name} spell them home?`, speed: 1.2, view: null, last: true,
       run() { story.rain = false; witchAnim.celebrate = 0.001; } },
@@ -482,12 +482,20 @@ function openGrown() {
 }
 function renderGrown() {
   const settings = [
-    ["Read words and story aloud", () => save.speak ? "On" : "Off", () => { save.speak = !save.speak; if (!save.speak) hush(); }],
     ["On-screen keyboard letters", () => save.kbd === "abc" ? "a b c" : "q w e r t y", () => { save.kbd = save.kbd === "abc" ? "qwerty" : "abc"; buildKeyboard(); }],
     ["Show the on-screen keyboard", () => save.showKbd === "always" ? "Always" : "On tablets", () => { save.showKbd = save.showKbd === "always" ? "auto" : "always"; }],
     ["Glow the next letter when stuck", () => save.helper ? "On" : "Off", () => { save.helper = !save.helper; }],
+    ["Graphics (Auto steps down on slower tablets)", () => ({ auto: "Auto", best: "Best", medium: "Medium", fast: "Fast" })[save.gfx] || "Auto", () => {
+      const order = ["auto", "best", "medium", "fast"];
+      save.gfx = order[(order.indexOf(save.gfx) + 1) % order.length];
+      quality.auto = save.gfx === "auto";
+      quality.level = save.gfx === "auto" ? 2 : QUALITY_LEVELS.findIndex(q => q.name === save.gfx);
+      quality.slow = 0; quality.frames = 0;
+      applyQuality();
+    }],
     ["Unlock every level and outfit", () => save.unlockAll ? "On" : "Off", () => { save.unlockAll = !save.unlockAll; }],
   ];
+  renderVoiceSetting();
   const box = $("settings");
   box.innerHTML = "";
   for (const [label, value, toggle] of settings) {
@@ -514,11 +522,51 @@ function renderGrown() {
   $("curriculum").innerHTML = html;
 }
 
+const VOICE_CHOICES = [["on", "Read aloud"], ["recorded", "Only my recordings"], ["off", "Off — my child reads"]];
+function setVoice(mode) {
+  if (mode !== "off") save.voiceLast = mode;
+  else if (save.voice !== "off") save.voiceLast = save.voice;
+  save.voice = mode;
+  if (mode === "off") hush();
+  persist();
+  setIcons();
+}
+function voiceStatusText() {
+  const cat = voiceCatalogue();
+  const count = (kind) => { const all = cat.filter(c => c.kind === kind); return [all.filter(c => hasClip(c.text)).length, all.length]; };
+  const [w, wn] = count("word"), [l, ln] = count("line");
+  return `${w} of ${wn} words and ${l} of ${ln} lines have a recording.`;
+}
+function renderVoiceSetting() {
+  const box = $("voiceSetting");
+  box.innerHTML = `<div>Voice-over for words and story</div><div class="tabs"></div>
+    <p class="note" id="voiceStatus"></p>
+    <p class="note">Want to hear your own voice instead of the computer's? See <b>voice/README.md</b> in the game folder
+      for how to add recordings. <span id="voiceStudioLink"><!-- link to the recording page goes here --></span></p>`;
+  const tabs = box.querySelector(".tabs");
+  for (const [mode, label] of VOICE_CHOICES) {
+    const b = document.createElement("button");
+    b.textContent = label;
+    if (voiceMode() === mode) b.className = "on";
+    b.addEventListener("click", () => { setVoice(mode); renderVoiceSetting(); });
+    tabs.appendChild(b);
+  }
+  $("voiceStatus").textContent = voiceStatusText();
+}
+
 /* ------------------------------- buttons ------------------------------ */
 
+const VOICE_LABELS = { on: "Reading aloud", recorded: "Reading aloud (my recordings only)", off: "Reading aloud is off" };
 function setIcons() {
-  $("muteBtn").textContent = save.muted ? "🔇" : "🔊";
-  $("voiceBtn").classList.toggle("off", !save.speak);
+  document.querySelectorAll(".mute-toggle").forEach(b => {
+    b.textContent = save.muted ? "🔇" : "🔊";
+    b.classList.toggle("off", save.muted);
+  });
+  document.querySelectorAll(".voice-toggle").forEach(b => {
+    b.textContent = voiceMode() === "off" ? "🤫" : "🗣️";
+    b.classList.toggle("off", voiceMode() === "off");
+    b.title = VOICE_LABELS[voiceMode()];
+  });
 }
 
 function wireUI() {
@@ -536,7 +584,7 @@ function wireUI() {
   on("grownBack", () => { showScreen(mode === "title" ? "titleScreen" : null); if (mode === "title") goTitle(); });
   on("resetBtn", () => {
     if (!confirm("Start again from the very beginning? All stars, friends and outfits will be cleared.")) return;
-    const keep = { muted: save.muted, speak: save.speak, kbd: save.kbd, showKbd: save.showKbd, helper: save.helper };
+    const keep = { muted: save.muted, voice: save.voice, voiceLast: save.voiceLast, kbd: save.kbd, showKbd: save.showKbd, helper: save.helper };
     save = { ...freshSave(), ...keep };
     persist();
     rebuildWitch();
@@ -551,19 +599,25 @@ function wireUI() {
   on("menuBtn", () => curtain(() => openMap(currentPlace, false)));
   on("replayBtn", () => curtain(() => startLevel(flight.level.n)));
   on("nextBtn", nextAfterComplete);
-  on("muteBtn", () => {
+  document.querySelectorAll(".mute-toggle").forEach(b => b.addEventListener("click", () => {
+    startMusic();
     save.muted = !save.muted;
     persist();
     setIcons();
     if (save.muted) { music.pause(); hush(); } else playMusic();
-  });
-  on("voiceBtn", () => {
-    save.speak = !save.speak;
-    persist();
-    setIcons();
-    if (save.speak) say("I'll read the words!"); else hush();
-  });
-  on("brewSay", () => { if (brew.word) say(brew.word.text, { rate: 0.75 }); });
+  }));
+  document.querySelectorAll(".voice-toggle").forEach(b => b.addEventListener("click", () => {
+    startMusic();
+    if (voiceMode() === "off") {
+      setVoice(save.voiceLast);
+      toast("I'll read to you! 🗣️");
+      say("I'll read to you!");
+    } else {
+      setVoice("off");
+      toast("You read — I'll be quiet 🤫");
+    }
+  }));
+  on("brewSay", () => { if (brew.word) say(brew.word.text, { rate: 0.75, force: true }); });
   on("brewPeek", brewPeek);
   on("storyNext", storyNext);
   on("storySkip", finishStory);
