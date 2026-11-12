@@ -1,5 +1,20 @@
 # Changelog
 
+## Little Star Witch 2.2.1
+
+**Sound**
+- A line being said is no longer cut off by the next one. Lines wait their turn (with a short
+  breath between them); a passing remark that has waited too long is dropped instead of arriving
+  late. Only something the player asks for (tapping a word, "hear it again", the next story
+  page) interrupts.
+- While anything is being said the music drops to a murmur and the sound effects step back, and
+  both return a moment after the last line. Before, the music only dipped a little, and only
+  for recordings.
+- Home recordings are brought up to one speaking level when played, with a limiter, a rumble
+  filter and a little extra clarity on consonants, so a quiet take is as easy to hear as a loud
+  one. Recordings do not need to be made again.
+- New recordings keep more of the quiet edges of a word, so a soft "s" or "f" is not trimmed.
+
 ## Little Star Witch 2.2
 
 **Keys first, phonics second**

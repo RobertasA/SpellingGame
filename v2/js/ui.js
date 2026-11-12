@@ -47,7 +47,7 @@ function caption(text, ms = 3000, high = false, speak = true) {
   c.classList.add("show");
   clearTimeout(captionTimer);
   captionTimer = setTimeout(() => c.classList.remove("show"), ms);
-  if (speak) say(text, { rate: 0.9, pitch: 1.15 });
+  if (speak) say(text, { rate: 0.9, pitch: 1.15, patience: 6000 });
 }
 function clearMessages() {
   for (const id of ["caption", "banner", "hint", "toast"]) $(id).classList.remove("show");
@@ -127,7 +127,7 @@ function openMap(p, speak = true) {
   renderMap();
   applyView();
   const place = PLACES[currentPlace];
-  if (speak) say(save.helped[place.id] ? place.thanks : place.plea + " " + place.need, { rate: 0.9, pitch: 1.15 });
+  if (speak) say(save.helped[place.id] ? place.thanks : place.plea + " " + place.need, { rate: 0.9, pitch: 1.15, cut: true });
 }
 
 function potionRowHTML(p, freshStep = -1) {
@@ -467,7 +467,7 @@ function storyNext() {
   story.speed = step.speed || 0;
   $("storyText").textContent = step.text;
   $("storyNext").textContent = step.last ? "Let's go! ▶" : "▶";
-  say(step.text, { rate: 0.9, pitch: 1.15 });
+  say(step.text, { rate: 0.9, pitch: 1.15, cut: true });
   step.run?.();
   applyView();
   sfx.tick();
@@ -646,13 +646,13 @@ function wireUI() {
     if (voiceMode() === "off") {
       setVoice(save.voiceLast);
       toast("I'll read to you! 🗣️");
-      say("I'll read to you!");
+      say("I'll read to you!", { cut: true });
     } else {
       setVoice("off");
       toast("You read — I'll be quiet 🤫");
     }
   }));
-  on("brewSay", () => { if (brew.word) say(brew.word.text, { rate: 0.75, force: true }); });
+  on("brewSay", () => { if (brew.word) say(brew.word.text, { rate: 0.75, force: true, cut: true }); });
   on("brewPeek", brewPeek);
   on("storyNext", storyNext);
   on("storySkip", finishStory);

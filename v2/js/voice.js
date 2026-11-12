@@ -157,19 +157,38 @@ function willBeHeard(text) {
 function canSpeak() { return !save.muted && voiceMode() === "on" && hasComputerVoice(); }
 
 // One line at a time, whether it is a clip or the computer voice, so "queue" works for both.
-const CLIP_GAIN = 1.0;
 const sayQueue = [];
 let sayNow = null;
-let ducking = 0;
 
+/* While anything is being said the music drops to a murmur and the sound effects step back, so a
+   word to be spelled from hearing is never fighting a tune. Both come back shortly after the last
+   line ends — not between two lines said one after the other. */
+const MUSIC_UNDER_VOICE = 0.12;            // of MUSIC_VOLUME
+const SFX_UNDER_VOICE = 0.3;               // of SFX_GAIN
+let ducking = 0, duckRelease = 0, musicFade = 0;
+function fadeMusic(to) {
+  clearInterval(musicFade);
+  const from = music.volume, t0 = performance.now();
+  musicFade = setInterval(() => {
+    const k = Math.min(1, (performance.now() - t0) / 240);
+    music.volume = from + (to - from) * k;
+    if (k >= 1) clearInterval(musicFade);
+  }, 30);
+}
+function applyDuck(down) {
+  fadeMusic(down ? MUSIC_VOLUME * MUSIC_UNDER_VOICE : MUSIC_VOLUME);
+  if (master && actx) master.gain.setTargetAtTime(down ? SFX_GAIN * SFX_UNDER_VOICE : SFX_GAIN, actx.currentTime, 0.06);
+}
 function duck(on) {
+  const was = ducking;
   ducking = Math.max(0, ducking + (on ? 1 : -1));
-  music.volume = ducking ? MUSIC_VOLUME * 0.4 : MUSIC_VOLUME;
+  clearTimeout(duckRelease);
+  if (ducking && !was) applyDuck(true);
+  else if (!ducking) duckRelease = setTimeout(() => applyDuck(false), 700);
 }
 function stopClip(job) {
   if (!job.clip) return;
   job.clip = false;
-  duck(false);
   if (job.source) { job.source.onended = null; try { job.source.stop(); } catch (e) { /* never started */ } job.source = null; }
   if (job.audio) { job.audio.onended = job.audio.onerror = null; job.audio.pause(); job.audio = null; }
 }
@@ -177,16 +196,18 @@ function stopJob(job) {
   clearTimeout(job.timer);
   stopClip(job);
   if (job.speaking) { job.speaking = false; speechSynthesis.cancel(); }
+  if (job.ducked) { job.ducked = false; duck(false); }
 }
 function finishJob(job) {
   if (sayNow !== job) return;
   stopJob(job);
   sayNow = null;
-  nextJob();
+  // a breath between two lines, so "Listen… and spell it." and the word don't run together
+  if (sayQueue.length) setTimeout(nextJob, 260);
 }
 function speakJob(job) {
   // pictures in a caption ("⭐ Star challenge!") would be read out as words
-  const u = new SpeechSynthesisUtterance(job.text.replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "").trim());
+  const u = new SpeechSynthesisUtterance(job.text.replace(/[\p{Extended_Pictographic}️]/gu, "").trim());
   if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = "en-GB";
   u.rate = job.rate;
   u.pitch = job.pitch;
@@ -218,6 +239,51 @@ function clipBuffer(url) {
   }
   return clipBuffers.get(url);
 }
+/* Home recordings come out at whatever level the microphone gave, usually well under the music.
+   Each clip is measured once and brought up to the same speaking level: the loudness of its voiced
+   part (not the quiet around it), with a ceiling on the boost so a hissy take isn't all hiss. */
+const CLIP_LEVEL = 0.2;                    // target RMS of the voiced part
+const CLIP_MAX_BOOST = 10;
+const clipGains = new WeakMap();
+function clipGain(buffer) {
+  if (clipGains.has(buffer)) return clipGains.get(buffer);
+  const d = buffer.getChannelData(0);
+  let peak = 0;
+  for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
+  let gain = 1;
+  if (peak > 0.005) {
+    // 20 ms windows; only the ones that hold voice count
+    const win = Math.max(1, Math.floor(buffer.sampleRate * 0.02)), floor = (peak * 0.15) ** 2;
+    let sum = 0, n = 0;
+    for (let i = 0; i + win <= d.length; i += win) {
+      let e = 0;
+      for (let j = i; j < i + win; j++) e += d[j] * d[j];
+      e /= win;
+      if (e >= floor) { sum += e; n++; }
+    }
+    const rms = n ? Math.sqrt(sum / n) : peak * 0.3;
+    // peaks may go a little over full scale: the limiter after this catches them
+    gain = Math.max(0.5, Math.min(CLIP_LEVEL / rms, 1.6 / peak, CLIP_MAX_BOOST));
+  }
+  clipGains.set(buffer, gain);
+  return gain;
+}
+/** gain → rumble out → a touch more consonant → limiter. Built once, shared by every clip. */
+let clipBus = null;
+function clipOut(ctx) {
+  if (!clipBus) {
+    const low = ctx.createBiquadFilter();
+    low.type = "highpass"; low.frequency.value = 110;
+    const presence = ctx.createBiquadFilter();
+    presence.type = "peaking"; presence.frequency.value = 3200; presence.Q.value = 0.8; presence.gain.value = 3.5;
+    const limit = ctx.createDynamicsCompressor();
+    limit.threshold.value = -8; limit.knee.value = 6; limit.ratio.value = 12;
+    limit.attack.value = 0.002; limit.release.value = 0.12;
+    low.connect(presence); presence.connect(limit); limit.connect(ctx.destination);
+    clipBus = low;
+  }
+  return clipBus;
+}
 function playClipElement(job, url) {
   const a = new Audio(url);
   job.audio = a;
@@ -230,7 +296,6 @@ function playClipElement(job, url) {
 }
 function playClipJob(job, url) {
   job.clip = true;
-  duck(true);
   clearTimeout(job.timer);
   job.timer = setTimeout(() => finishJob(job), 30000);   // no clip is this long
   clipBuffer(url).then((buffer) => {
@@ -240,17 +305,25 @@ function playClipJob(job, url) {
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     const gain = ctx.createGain();
-    gain.gain.value = CLIP_GAIN;
-    src.connect(gain).connect(ctx.destination);
+    gain.gain.value = clipGain(buffer);
+    src.connect(gain).connect(clipOut(ctx));
     src.onended = () => finishJob(job);
     job.source = src;
     src.start();
   });
 }
 function nextJob() {
-  if (sayNow || !sayQueue.length) return;
-  const job = sayQueue.shift();
+  if (sayNow) return;
+  let job = null;
+  const now = performance.now();
+  while (sayQueue.length && !job) {
+    const j = sayQueue.shift();
+    if (j.keep || now - j.born <= j.patience) job = j;   // a remark that has waited too long is stale
+  }
+  if (!job) return;
   sayNow = job;
+  job.ducked = true;
+  duck(true);
   const url = job.plan.clip ? clipUrl(job.text) : null;
   if (url) playClipJob(job, url);
   else if (job.plan.speech) speakJob(job);
@@ -265,12 +338,18 @@ function noteUncatalogued(text) {
   if (!catalogueSlugs.has(clipSlug(text))) console.info("[voice] not in catalogue:", text);
 }
 
-function say(text, { rate = 0.85, pitch = 1.25, queue = false, force = false } = {}) {
+/* A new line never cuts off the one being said. By default it waits its turn, taking the place
+   of anything else that was waiting, and is dropped if its turn takes too long to come.
+     queue: true   wait however long it takes, and don't push other lines out (a word to spell)
+     cut: true     stop whatever is being said and say this now (the player asked for it)        */
+function say(text, { rate = 0.85, pitch = 1.25, queue = false, cut = false, force = false, patience = 3000 } = {}) {
   if (voiceDebug) noteUncatalogued(text);
   const plan = sayPlan(text, force);
   if (!plan) return;
-  if (!queue) hush();
-  sayQueue.push({ text, rate, pitch, plan, clip: false, audio: null, source: null, timer: 0, speaking: false });
+  if (cut) hush();
+  else if (!queue) for (let i = sayQueue.length - 1; i >= 0; i--) if (!sayQueue[i].keep) sayQueue.splice(i, 1);
+  sayQueue.push({ text, rate, pitch, plan, keep: queue, patience, born: performance.now(),
+    clip: false, audio: null, source: null, timer: 0, speaking: false, ducked: false });
   nextJob();
 }
 function hush() {

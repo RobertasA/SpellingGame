@@ -3,7 +3,7 @@
    Core: tiny helpers, saved progress, sound
    ===================================================================== */
 
-const VERSION = "2.2";
+const VERSION = "2.2.1";
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -99,6 +99,7 @@ function wobblyWords() {
    tablet (no audio formats to worry about) and each letter can ring one note
    higher than the last. The background music is the CC0 loop from v1. */
 
+const SFX_GAIN = 0.55;          // voice.js dips it, and the music, while something is being said
 let actx = null, master = null;
 function audio() {
   if (!actx) {
@@ -106,7 +107,7 @@ function audio() {
     if (!AC) return null;
     actx = new AC();
     master = actx.createGain();
-    master.gain.value = 0.55;
+    master.gain.value = SFX_GAIN;
     master.connect(actx.destination);
   }
   if (actx.state === "suspended") actx.resume();
@@ -185,7 +186,7 @@ const sfx = {
 
 const music = new Audio("../assets/audio/music.mp3");
 music.loop = true;
-const MUSIC_VOLUME = 0.22;      // voice.js dips it while a recording plays
+const MUSIC_VOLUME = 0.22;      // see SFX_GAIN
 music.volume = MUSIC_VOLUME;
 let musicStarted = false;
 function playMusic() {

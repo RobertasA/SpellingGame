@@ -140,7 +140,7 @@ function brewLook() {
   $("brewPeek").disabled = true;
   renderSlots();
   sfx.pop();
-  say(w.text, { rate: 0.75 });
+  say(w.text, { rate: 0.75, queue: true });
   const lookTime = (flight.level.place === 0 ? 2400 : 2000) + w.text.length * 260;
   later(brewCover, lookTime);
 }
@@ -249,7 +249,7 @@ function brewWrong(tileEl) {
   }
   if (brew.challenge) {
     // say it again after two slips, and light up the next letter after three — nobody gets stuck
-    if (brew.wrong === 2) say(brew.word.text, { rate: 0.7 });
+    if (brew.wrong === 2) say(brew.word.text, { rate: 0.7, cut: true });
     if (brew.wrong >= 3) {
       const key = brew.keys[brew.word.graphemes[brew.slot].t[brew.inG]];
       if (key) key.classList.add("glow");
@@ -301,7 +301,7 @@ function brewPeek() {
   brew.phase = "peek";
   brew.peeks++;
   renderSlots();
-  say(brew.word.text, { rate: 0.75 });
+  say(brew.word.text, { rate: 0.75, cut: true });
   later(() => { if (brew.phase === "peek") { brew.phase = "spell"; renderSlots(); } }, 1500 + brew.word.text.length * 120);
 }
 

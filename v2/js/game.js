@@ -346,7 +346,7 @@ function spawnStar() {
   label.className = "label";
   label.style.opacity = "0";
   label.innerHTML = `<div class="word${word.tricky ? " tricky" : ""}"></div><div class="timer"><i></i></div>`;
-  label.firstChild.addEventListener("pointerdown", () => say(word.text, { rate: 0.75, force: true }));    // tap a word to hear it
+  label.firstChild.addEventListener("pointerdown", () => say(word.text, { rate: 0.75, force: true, cut: true }));    // tap a word to hear it
   labelsEl.appendChild(label);
 
   const star = { word, colorIndex, typed: 0, errors: 0, root, spot, mesh, label, restY, state: "waiting", t: 0, wiggle: 0, phase: rand(0, 6), life: wordLife(word) };

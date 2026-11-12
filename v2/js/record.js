@@ -13,7 +13,7 @@
   const bySlug = new Map(items.map((c) => [c.slug, c]));
   const MIME_CHOICES = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm"];   // mp4 plays on every browser
   const MAX_TAKE_MS = 60000;                 // a forgotten recording stops itself
-  const PAD_S = 0.08, TRIM_OVER_S = 0.15;    // keep 80 ms around the voice; only trim if > 150 ms is spare
+  const PAD_S = 0.15, TRIM_OVER_S = 0.3;     // keep 150 ms around the voice; only trim if > 300 ms is spare
   const el = {};
   ["group", "position", "text", "has", "hint", "meter", "meterLabel", "timer", "recBtn", "backBtn", "playBtn", "shippedBtn",
     "delBtn", "nextBtn", "status", "notices", "barDevice", "barShipped", "progressText", "onlyMissing", "groups",
@@ -255,7 +255,7 @@
     }
     const info = { before: buffer.duration, after: buffer.duration, peak, clipped: clipped > 3, silent: peak < 0.02, blob: null };
     if (info.silent) return info;              // nothing to find; keep it as it is
-    const threshold = Math.max(0.015, peak * 0.1);
+    const threshold = Math.max(0.01, peak * 0.05);   // low enough to keep a soft "s" or "f" at the end
     let first = 0, last = data.length - 1;
     while (first < last && Math.abs(data[first]) < threshold) first++;
     while (last > first && Math.abs(data[last]) < threshold) last--;
