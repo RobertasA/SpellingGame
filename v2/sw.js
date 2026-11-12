@@ -5,6 +5,7 @@
 const CACHE = "little-star-witch-v2";
 const CORE = [
   "./", "index.html", "style.css", "icon.svg", "manifest.webmanifest",
+  "record.html", "record.css", "js/record.js",
   "lib/three.min.js",
   "voice/manifest.js",
   "js/words.js", "js/core.js", "js/voice.js", "js/textures.js", "js/engine.js", "js/models.js", "js/world.js", "js/game.js", "js/brew.js", "js/ui.js", "js/main.js",

@@ -391,6 +391,7 @@ h1 .t2 { display: block; }
 .voice-setting { margin-bottom: 12px; font-size: 17px; }
 .voice-setting .tabs { justify-content: flex-start; margin: 6px 0 8px; }
 .voice-setting .tabs button { font-size: 16px; padding: 8px 14px; }
+.voice-setting a.link { color: var(--plum); text-shadow: none; font-weight: 600; white-space: nowrap; }
 .curriculum { font-size: 15px; line-height: 1.4; }
 .curriculum .place { font-weight: 700; color: var(--plum); margin: 12px 0 4px; font-size: 17px; }
 .curriculum .lv { display: grid; grid-template-columns: 2.2em 9.5em 1fr; gap: 8px; padding: 4px 0; border-top: 1px solid #ebe3f7; }

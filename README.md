@@ -105,6 +105,8 @@ No build step and no dependencies to install. Plain scripts, loaded in order:
 | `v2/js/brew.js` | the brewing part and the "friend gets a potion" scenes |
 | `v2/js/ui.js` | title, map, dress up, friends, story, grown-ups page |
 | `v2/js/main.js` | keyboard input, the frame loop, start-up |
+| `v2/record.html`, `v2/js/record.js` | the Voice studio, a page for recording your own voice-over |
+| `v2/voice/` | recorded clips, the generated list of them, and the recording checklist |
 
 To add or change words, edit `v2/js/words.js` — the notation is explained at the top of the file
 (`"sh.i.p:🚢"` is *ship*, split into its three sounds, with a picture clue).
@@ -137,8 +139,20 @@ cannot keep up.
 
 The game looks for a recording of each word or sentence before it falls back to the computer
 voice, and "Only my recordings" on the grown-ups page silences the computer voice altogether.
-`v2/voice/README.md` explains the two ways to add recordings and `v2/voice/RECORDING-LIST.md`
-lists everything the game can say.
+
+- **The easy way** — grown-ups page → *Record your own voice* opens the **Voice studio**
+  (`v2/record.html`). It shows each word and sentence in turn; press Space to record, Space to
+  stop, Enter for the next one. Silence at the ends is trimmed, every take is saved as you go,
+  and the game on that device uses it straight away. The words are listed place by place, so
+  recording just the Cottage Garden words is enough for the first five levels.
+- **To share recordings with every device**, download them from the studio as a `.zip` and unzip
+  it into `v2/voice/` (or load the zip in the studio on another device).
+- **With your own tools** — `v2/voice/README.md` explains the file names, and
+  `v2/voice/RECORDING-LIST.md` lists everything the game can say. Run
+  `node v2/voice/build-manifest.js` after adding files.
+
+The microphone only works on `https://` or `localhost`, so the studio cannot record when the game
+is opened straight from disk.
 
 ---
 

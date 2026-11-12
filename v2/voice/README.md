@@ -13,6 +13,21 @@ In **For grown-ups** you can choose:
 
 (Children can also tap the 🗣️ button to turn reading aloud off and on.)
 
+## The easy way: the Voice studio
+
+Open **For grown-ups → Record your own voice** in the game (or open `record.html`
+in the `v2` folder) and record straight into the browser. It shows each word
+and sentence in turn, trims the silence for you, saves every clip as you go
+and uses it in the game on that device at once. You can download all your
+recordings as a `.zip` and unzip it into this folder to share them with every device.
+
+For recordings meant to be shared to every device, record in Safari
+(iPhone, iPad or Mac) or any browser that offers `audio/mp4`: those files play
+everywhere, whereas `.webm` clips may not play on older iPhones and iPads.
+
+The rest of this page is the manual way, if you would rather record with your
+own tools.
+
 ## What to record
 
 Open `RECORDING-LIST.md` in this folder. It lists every word and sentence the

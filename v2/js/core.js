@@ -38,6 +38,8 @@ function freshSave() {
     kbd: "qwerty",        // or "abc"
     showKbd: "auto",      // or "always"
     helper: true,         // glow the next key when stuck
+    brewMode: "mix",      // brewing: "mix" (the last word is a star challenge), "look" (always shown first) or "hear" (all challenges)
+    aced: 0,              // star challenges spelled with no peeking or help, ever
     gfx: "auto",          // graphics: "auto", "best", "medium" or "fast"
     unlockAll: false,
   };

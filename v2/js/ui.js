@@ -193,6 +193,7 @@ function showComplete() {
   $("completeStars").innerHTML = [1, 2, 3].map(i => `<span class="${i <= stars ? "" : "dim"}">⭐</span>`).join("");
   let stats = `⭐ Stars sent home: <b>${flight.sent}</b>`;
   if (flight.missed) stats += `<br>💫 Stars that hid: <b>${flight.missed}</b>`;
+  if (brew.aced.length) stats += `<br>🌟 Star challenge: you spelled <b style="font-family:var(--word-font)">${brew.aced.join(", ")}</b> all by yourself!`;
   if (placeDone(level.place) && helped) stats += `<br>${FRIEND_INFO[place.friend].emoji} <b>${place.friendName}</b> is your friend!`;
   $("completeStats").innerHTML = stats;
   $("completePotion").innerHTML = potionRowHTML(level.place, level.step);
@@ -485,6 +486,10 @@ function renderGrown() {
     ["On-screen keyboard letters", () => save.kbd === "abc" ? "a b c" : "q w e r t y", () => { save.kbd = save.kbd === "abc" ? "qwerty" : "abc"; buildKeyboard(); }],
     ["Show the on-screen keyboard", () => save.showKbd === "always" ? "Always" : "On tablets", () => { save.showKbd = save.showKbd === "always" ? "auto" : "always"; }],
     ["Glow the next letter when stuck", () => save.helper ? "On" : "Off", () => { save.helper = !save.helper; }],
+    ["Brewing (a star challenge is heard, not shown)", () => ({ mix: "Last word is a star challenge", look: "Always look first", hear: "Star challenges only" })[save.brewMode] || "Last word is a star challenge", () => {
+      const order = ["mix", "look", "hear"];
+      save.brewMode = order[(order.indexOf(save.brewMode) + 1) % order.length];
+    }],
     ["Graphics (Auto steps down on slower tablets)", () => ({ auto: "Auto", best: "Best", medium: "Medium", fast: "Fast" })[save.gfx] || "Auto", () => {
       const order = ["auto", "best", "medium", "fast"];
       save.gfx = order[(order.indexOf(save.gfx) + 1) % order.length];
@@ -511,6 +516,7 @@ function renderGrown() {
   $("wobbly").innerHTML = wob.length
     ? `These words have hidden or needed a few tries. They will pop up again while playing: <b style="font-family:var(--word-font)">${wob.join(", ")}</b>`
     : "Nothing yet — words that prove tricky will be listed here, and will come back for another go.";
+  if (save.aced) $("wobbly").innerHTML += `<br>🌟 Star challenges spelled with no peeking and no help: <b>${save.aced}</b>`;
   let html = "";
   PLACES.forEach((place, p) => {
     html += `<div class="place">${place.emoji} ${place.name} · ${place.stage}</div>`;
@@ -541,8 +547,8 @@ function renderVoiceSetting() {
   const box = $("voiceSetting");
   box.innerHTML = `<div>Voice-over for words and story</div><div class="tabs"></div>
     <p class="note" id="voiceStatus"></p>
-    <p class="note">Want to hear your own voice instead of the computer's? See <b>voice/README.md</b> in the game folder
-      for how to add recordings. <span id="voiceStudioLink"><!-- link to the recording page goes here --></span></p>`;
+    <p class="note">Want your child to hear your voice instead of the computer's?
+      <a class="link" id="voiceStudioLink" href="record.html">🎙️ Record your own voice</a></p>`;
   const tabs = box.querySelector(".tabs");
   for (const [mode, label] of VOICE_CHOICES) {
     const b = document.createElement("button");
@@ -584,7 +590,7 @@ function wireUI() {
   on("grownBack", () => { showScreen(mode === "title" ? "titleScreen" : null); if (mode === "title") goTitle(); });
   on("resetBtn", () => {
     if (!confirm("Start again from the very beginning? All stars, friends and outfits will be cleared.")) return;
-    const keep = { muted: save.muted, voice: save.voice, voiceLast: save.voiceLast, kbd: save.kbd, showKbd: save.showKbd, helper: save.helper };
+    const keep = { muted: save.muted, voice: save.voice, voiceLast: save.voiceLast, kbd: save.kbd, showKbd: save.showKbd, helper: save.helper, gfx: save.gfx, brewMode: save.brewMode };
     save = { ...freshSave(), ...keep };
     persist();
     rebuildWitch();

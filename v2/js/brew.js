@@ -44,7 +44,7 @@ function chooseBrewWords() {
 }
 
 /** A word can be a challenge if the child can tell which word it is without seeing it. */
-function canDictate(w) { return !!w.emoji || canSay(w.text); }
+function canDictate(w) { return !!w.emoji || willBeHeard(w.text); }
 /** Decide which of the words are star challenges (and put the challenge last when there is just one). */
 function chooseChallenges(words) {
   const style = save.brewMode || "mix";
@@ -160,7 +160,7 @@ function brewHear() {
   renderSlots();
   applyView();                                    // the panel is taller now
   sfx.reward();
-  const heard = canSay(w.text);
+  const heard = willBeHeard(w.text);
   if (!save.tips.hear) {
     save.tips.hear = 1; persist();
     caption(heard ? "⭐ Star challenge! This word is hiding. Listen… and spell it yourself!" : "⭐ Star challenge! This word is hiding. Can you spell it yourself?", 5200, true);

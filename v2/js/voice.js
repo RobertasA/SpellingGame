@@ -56,9 +56,14 @@ function voiceDbDo(mode, fn) {
     } catch (e) { resolve(false); }
   }));
 }
-function setDeviceClip(slug, blob) {
+function dropDeviceUrl(slug) {
   const old = deviceClips.get(slug);
-  if (old) URL.revokeObjectURL(old);
+  if (!old) return;
+  URL.revokeObjectURL(old);
+  clipBuffers.delete(old);
+}
+function setDeviceClip(slug, blob) {
+  dropDeviceUrl(slug);
   deviceClips.set(slug, URL.createObjectURL(blob));
 }
 function loadDeviceClips() {
@@ -83,15 +88,15 @@ const voiceStore = {
   ready: loadDeviceClips(),
   put(slug, blob) { setDeviceClip(slug, blob); return voiceDbDo("readwrite", (s) => s.put(blob, slug)); },
   remove(slug) {
-    const url = deviceClips.get(slug);
-    if (url) URL.revokeObjectURL(url);
+    dropDeviceUrl(slug);
     deviceClips.delete(slug);
     return voiceDbDo("readwrite", (s) => s.delete(slug));
   },
   has(slug) { return deviceClips.has(slug); },
+  url(slug) { return deviceClips.get(slug) || null; },      // an object URL for the recording, to play or copy it
   keys() { return Array.from(deviceClips.keys()); },
   clear() {
-    deviceClips.forEach((url) => URL.revokeObjectURL(url));
+    Array.from(deviceClips.keys()).forEach(dropDeviceUrl);
     deviceClips.clear();
     return voiceDbDo("readwrite", (s) => s.clear());
   },
@@ -126,6 +131,8 @@ if ("speechSynthesis" in window) {
   speechSynthesis.addEventListener?.("voiceschanged", chooseVoice);
 }
 function hasComputerVoice() { return "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined"; }
+/** Stricter: the device really has a voice installed (some have the speech API but nothing to speak with). */
+function computerVoiceReady() { return hasComputerVoice() && speechSynthesis.getVoices().length > 0; }
 
 /* ------------------------------- saying it ------------------------------- */
 
@@ -141,10 +148,16 @@ function sayPlan(text, force) {
   return clip || speech ? { clip, speech } : null;
 }
 function canSay(text, force = false) { return !!sayPlan(text, force); }
+/** For when the game relies on a word being heard (a spelling challenge): a clip, or a voice that is really there. */
+function willBeHeard(text) {
+  const plan = sayPlan(text, false);
+  return !!plan && (plan.clip || computerVoiceReady());
+}
 /** Older name: true when the computer voice would read things out. */
 function canSpeak() { return !save.muted && voiceMode() === "on" && hasComputerVoice(); }
 
 // One line at a time, whether it is a clip or the computer voice, so "queue" works for both.
+const CLIP_GAIN = 1.0;
 const sayQueue = [];
 let sayNow = null;
 let ducking = 0;
@@ -154,12 +167,11 @@ function duck(on) {
   music.volume = ducking ? MUSIC_VOLUME * 0.4 : MUSIC_VOLUME;
 }
 function stopClip(job) {
-  const a = job.audio;
-  if (!a) return;
-  job.audio = null;
-  a.onended = a.onerror = null;
-  a.pause();
+  if (!job.clip) return;
+  job.clip = false;
   duck(false);
+  if (job.source) { job.source.onended = null; try { job.source.stop(); } catch (e) { /* never started */ } job.source = null; }
+  if (job.audio) { job.audio.onended = job.audio.onerror = null; job.audio.pause(); job.audio = null; }
 }
 function stopJob(job) {
   clearTimeout(job.timer);
@@ -173,7 +185,8 @@ function finishJob(job) {
   nextJob();
 }
 function speakJob(job) {
-  const u = new SpeechSynthesisUtterance(job.text);
+  // pictures in a caption ("⭐ Star challenge!") would be read out as words
+  const u = new SpeechSynthesisUtterance(job.text.replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "").trim());
   if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = "en-GB";
   u.rate = job.rate;
   u.pitch = job.pitch;
@@ -190,18 +203,49 @@ function clipFailed(job) {
   stopClip(job);
   if (job.plan.speech) speakJob(job); else finishJob(job);
 }
-function playClipJob(job, url) {
+/* Clips play through the same Web Audio context as the sound effects. Tablets only let a page
+   start sound from a tap, and that context has already been unlocked by one — an <audio> element
+   made later, when a star flies home, would be refused. The element is the fallback (it is all
+   that works when the game is opened straight from disk). */
+const clipBuffers = new Map();             // url -> Promise<AudioBuffer | null>
+function clipBuffer(url) {
+  if (!clipBuffers.has(url)) {
+    const ctx = audio();
+    clipBuffers.set(url, !ctx ? Promise.resolve(null) : fetch(url)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error("missing"))))
+      .then((data) => new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject)))
+      .catch(() => null));
+  }
+  return clipBuffers.get(url);
+}
+function playClipElement(job, url) {
   const a = new Audio(url);
   job.audio = a;
-  duck(true);
   a.onended = () => finishJob(job);
   a.onerror = () => clipFailed(job);
-  clearTimeout(job.timer);
-  job.timer = setTimeout(() => finishJob(job), 30000);   // no clip is this long
   try {
     const p = a.play();
     if (p && p.catch) p.catch(() => clipFailed(job));     // blocked or undecodable
   } catch (e) { clipFailed(job); }
+}
+function playClipJob(job, url) {
+  job.clip = true;
+  duck(true);
+  clearTimeout(job.timer);
+  job.timer = setTimeout(() => finishJob(job), 30000);   // no clip is this long
+  clipBuffer(url).then((buffer) => {
+    if (sayNow !== job || !job.clip) return;             // hushed while it was loading
+    const ctx = buffer && audio();
+    if (!ctx || ctx.state !== "running") { playClipElement(job, url); return; }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.value = CLIP_GAIN;
+    src.connect(gain).connect(ctx.destination);
+    src.onended = () => finishJob(job);
+    job.source = src;
+    src.start();
+  });
 }
 function nextJob() {
   if (sayNow || !sayQueue.length) return;
@@ -226,7 +270,7 @@ function say(text, { rate = 0.85, pitch = 1.25, queue = false, force = false } =
   const plan = sayPlan(text, force);
   if (!plan) return;
   if (!queue) hush();
-  sayQueue.push({ text, rate, pitch, plan, audio: null, timer: 0, speaking: false });
+  sayQueue.push({ text, rate, pitch, plan, clip: false, audio: null, source: null, timer: 0, speaking: false });
   nextJob();
 }
 function hush() {
