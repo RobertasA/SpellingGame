@@ -169,7 +169,15 @@ h1 .t2 { display: block; }
   box-shadow: 0 4px 0 rgba(50, 30, 90, .22);
 }
 .icon-btn:active { box-shadow: 0 1px 0 rgba(50, 30, 90, .22); }
-.icon-btn.off { opacity: .5; }
+.icon-btn.off { opacity: .55; position: relative; }
+/* a slash across the icon, so "off" reads at a glance and not only by the dimming */
+.icon-btn.off::after {
+  content: ""; position: absolute; left: 22%; right: 22%; top: 50%; height: 4px; border-radius: 4px;
+  background: var(--pink-deep); transform: rotate(-40deg); box-shadow: 0 0 0 2px var(--card);
+}
+.top-tools { position: absolute; top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); display: flex; gap: 8px; }
+.tools-row { margin: 0 0 14px; }
+.tools-row .icon-btn { width: 54px; height: 54px; font-size: 26px; background: #fff; }
 
 #banner {
   position: fixed; left: 50%; top: 76px; transform: translate(-50%, -20px) scale(.9); opacity: 0;
@@ -194,7 +202,7 @@ h1 .t2 { display: block; }
   background: var(--card); border-radius: 24px; padding: 12px 24px;
   font-size: 24px; font-weight: 600; box-shadow: var(--shadow);
   transition: all .35s cubic-bezier(.2, 1.6, .4, 1);
-  z-index: 15; pointer-events: none; text-align: center; max-width: calc(100vw - 32px);
+  z-index: 25; pointer-events: none; text-align: center; max-width: calc(100vw - 32px);
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 #hint {
@@ -298,6 +306,19 @@ h1 .t2 { display: block; }
 .brew-dots { display: flex; gap: 8px; justify-content: center; margin-top: 10px; font-size: 20px; }
 .brew-dots span { width: 34px; height: 34px; border-radius: 50%; background: #efe8fa; display: grid; place-items: center; }
 .brew-dots span.got { background: #fff6d6; box-shadow: 0 0 0 2px var(--gold); animation: pop .4s cubic-bezier(.2, 1.8, .4, 1); }
+.brew-dots span.star { background: #fff6d6; box-shadow: 0 0 0 2px var(--gold) inset; font-size: 16px; filter: grayscale(.5) opacity(.7); }
+/* star challenge: a whole keyboard to write the hidden word with */
+#brewTiles.keys { flex-direction: column; flex-wrap: nowrap; gap: 6px; }
+#brewTiles.keys .row { display: flex; justify-content: center; gap: 6px; }
+#brewTiles.keys button {
+  flex: 0 1 54px; min-width: 0; height: 48px; padding: 0 0 4px; font-size: 26px; border-radius: 14px;
+  box-shadow: 0 4px 0 #d6c8ec; animation: none;
+}
+#brewTiles.keys button:active, #brewTiles.keys button.down { transform: translateY(3px); box-shadow: 0 1px 0 #d6c8ec; background: #ffe9a0; }
+#brewTiles.keys button.vowel { color: var(--pink-deep); }
+#brewTiles.keys button.glow { background: var(--gold); box-shadow: 0 4px 0 var(--gold-deep), 0 0 0 4px rgba(255, 207, 74, .5); animation: glowpulse 1s ease-in-out infinite; }
+#brewUI.challenge { box-shadow: 0 0 0 4px var(--gold), 0 10px 30px rgba(50, 30, 90, .25); }
+#brewUI.challenge #brewPic { font-size: 56px; }
 .fly {
   position: fixed; left: 0; top: 0; z-index: 16; font-size: 44px; pointer-events: none;
   transition: transform .7s cubic-bezier(.5, -0.4, .7, 1), opacity .7s;
@@ -367,6 +388,10 @@ h1 .t2 { display: block; }
 /* ------------------------------ grown-ups ---------------------------- */
 .settings { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; align-items: center; font-size: 17px; }
 .settings button { font-size: 16px; padding: 7px 16px; min-width: 110px; }
+.voice-setting { margin-bottom: 12px; font-size: 17px; }
+.voice-setting .tabs { justify-content: flex-start; margin: 6px 0 8px; }
+.voice-setting .tabs button { font-size: 16px; padding: 8px 14px; }
+.voice-setting a.link { color: var(--plum); text-shadow: none; font-weight: 600; white-space: nowrap; }
 .curriculum { font-size: 15px; line-height: 1.4; }
 .curriculum .place { font-weight: 700; color: var(--plum); margin: 12px 0 4px; font-size: 17px; }
 .curriculum .lv { display: grid; grid-template-columns: 2.2em 9.5em 1fr; gap: 8px; padding: 4px 0; border-top: 1px solid #ebe3f7; }
@@ -388,6 +413,10 @@ h1 .t2 { display: block; }
   .potion-row .slot { width: 32px; height: 32px; font-size: 18px; }
   #brewTiles { margin-top: 8px; min-height: 54px; }
   #brewTiles button { min-width: 52px; height: 52px; }
+  #brewTiles.keys { gap: 4px; margin-top: 6px; }
+  #brewTiles.keys .row { gap: 5px; }
+  #brewTiles.keys button { height: 36px; font-size: 21px; flex-basis: 50px; }
+  #brewUI.challenge #brewPic { font-size: 40px; }
   .brew-top { min-height: 60px; }
   .brew-dots { display: none; }
   #kbd button { height: 42px; font-size: 23px; }

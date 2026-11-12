@@ -6,19 +6,23 @@ domain)**; the library and fonts bundled with v2 are MIT and SIL OFL. Credits ar
 ## Little Star Witch (v2)
 
 Everything you see is built in code: the witch, her cat, the six friends, the cauldron, the
-stars and all six places are original procedural 3D models made for this game. All sound
-effects are synthesised in the browser with the Web Audio API. No image or sound-effect files
-are used.
+stars and all six places are original procedural 3D models made for this game, and every surface
+texture (fur, wood grain, stone, fabric weave, water ripples, the moon's craters) is painted in
+code when the game starts. All sound effects are synthesised in the browser with the Web Audio
+API. No image or sound-effect files are used. Any voice recordings in `v2/voice/` are made by
+the family playing the game.
 
 | Asset | Files | Source | Author | License |
 |---|---|---|---|---|
-| three.js r160 | `v2/lib/three.min.js` | [threejs.org](https://threejs.org/) | three.js authors | MIT (`v2/lib/three.LICENSE`) |
+| three.js r160, with its post-processing and noise add-ons | `v2/lib/three.min.js` | [threejs.org](https://threejs.org/) | three.js authors | MIT (`v2/lib/three.LICENSE`) |
 | Fredoka (interface font) | `v2/fonts/fredoka-*.woff2` | [Fontsource](https://fontsource.org/fonts/fredoka) / Google Fonts | The Fredoka Project Authors | SIL OFL 1.1 (`v2/fonts/Fredoka-OFL.txt`) |
 | Andika (word font, designed for new readers) | `v2/fonts/andika-*.woff2` | [Fontsource](https://fontsource.org/fonts/andika) / SIL | SIL International | SIL OFL 1.1 (`v2/fonts/Andika-OFL.txt`) |
 | Background music loop | `assets/audio/music.mp3` (shared with v1) | [Cozy Puzzle In-Game 1](https://opengameart.org/content/cozy-puzzle-in-game-1) | Samza | CC0 1.0 |
 
-The vendored `three.min.js` is the stock r160 build with only its start-up deprecation
-`console.warn` removed.
+The vendored `three.min.js` is three.js r160 bundled into one file together with the add-ons the
+game uses (`EffectComposer`, `RenderPass`, `ShaderPass`, `UnrealBloomPass`, `OutputPass`,
+`SimplexNoise`, all part of the three.js distribution and under the same MIT licence).
+`v2/lib/README.md` has the one-line recipe that builds it.
 
 ## Gem Fairy (v1)
 

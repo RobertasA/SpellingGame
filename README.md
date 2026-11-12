@@ -24,7 +24,9 @@ Every level has two parts:
    Read it and type it; the star whooshes back up into the sky. Each right letter rings one note
    higher than the last. A star that isn't spelled in time just hides and comes back later.
 2. **Brew** — land beside the cauldron. *Look* at a word, it is *covered*, then *build it* from
-   sound tiles (`sh` `i` `p`) and *check*. Three words make one potion ingredient.
+   sound tiles (`sh` `i` `p`) and *check*. Three words make one potion ingredient — and the last
+   of the three is a **⭐ star challenge**: the word is never shown. The child hears it, sees its
+   picture, and writes it letter by letter on a whole keyboard.
 
 Five ingredients make a potion for a woodland friend who needs a little help: Pip the mouse is
 scared of the dark, Bramble the hedgehog is cold, Lily the frog has lost her croak, Flit the bat is
@@ -37,10 +39,14 @@ Potion for that sneezy cold. Everyone you help comes along on the rest of the ad
   Peak, Moon Castle), each with its own sky, scenery and friend. About 650 words.
 - **Sound buttons** under every word — a dot for one letter, a bar for a digraph (`sh`, `igh`),
   an arc for a split digraph (`a-e`) — the same marking children see in phonics lessons.
-- **Read aloud** (British English voice where the device has one): the story, each word when a star
-  goes home, and the word to spell when brewing. Tap any word to hear it.
+- **Read aloud — or not**: the story, each word when a star goes home, and the word to spell when
+  brewing can be read out. The 🗣️ button (title screen, pause card and top corner while playing)
+  turns the voice off so the child does all the reading. Tap any word to hear it.
+- **Your own voice**: the computer voice is only a stand-in. Record the words and story lines
+  yourself and the game uses your recordings instead — see [Recording your own voice](#recording-your-own-voice).
 - **Kind by design**: nothing can be lost or failed. The wood slows down while a word is being
   typed, the next key glows if a child is stuck, and after two wrong tries the right tile lights up.
+  In a star challenge the word is said again after two slips and the next letter lights up after three.
 - **Words that wobble come back**: a word that hid or needed several tries is remembered and
   slipped into later levels for another go. Brewing favours the words that were hardest when flying.
 - **Dress up**: choose skin, hair, outfit, cat and broom sparkles, and name the witch.
@@ -69,7 +75,9 @@ Reception phonics, then the spelling content of the National Curriculum for Year
 
 Typing a word that is on screen practises reading, letter recognition and keyboard skills.
 Brewing practises spelling from memory with the "look, cover, write, check" routine, and building
-words from graphemes rather than single letters.
+words from graphemes rather than single letters. The star challenge is a one-word dictation:
+segmenting a spoken word into its sounds and writing them down unaided. The grown-ups page can
+switch brewing to always look first, or to challenges only.
 
 ### Running it
 
@@ -87,19 +95,64 @@ No build step and no dependencies to install. Plain scripts, loaded in order:
 | File | What it holds |
 |---|---|
 | `v2/js/words.js` | the six places, thirty levels and all the words (with their sound buttons) |
-| `v2/js/core.js` | saved progress, sound effects (Web Audio), voice |
-| `v2/js/engine.js` | renderer, toon materials, shape helpers, mesh merging, particles, camera |
+| `v2/js/core.js` | saved progress, sound effects (Web Audio), music |
+| `v2/js/voice.js` | reading aloud: recorded clips first, the computer voice as a stand-in, and the list of every line the game can say |
+| `v2/js/textures.js` | procedural surface textures painted on canvases (fur, wood, stone, fabric, leaves, water ripples, the moon) |
+| `v2/js/engine.js` | renderer, lights, post-processing, materials, shape helpers, mesh merging, particles, camera |
 | `v2/js/models.js` | the witch, her cat, the six friends, cauldron, stars, wardrobe colours |
-| `v2/js/world.js` | sky, moon, the six biomes and their scenery and hiding spots |
+| `v2/js/world.js` | sky, moon, terrain, water, the six biomes with their scenery, ground cover and hiding spots |
 | `v2/js/game.js` | the flying part: words, typing, stars, level flow |
 | `v2/js/brew.js` | the brewing part and the "friend gets a potion" scenes |
 | `v2/js/ui.js` | title, map, dress up, friends, story, grown-ups page |
 | `v2/js/main.js` | keyboard input, the frame loop, start-up |
+| `v2/record.html`, `v2/js/record.js` | the Voice studio, a page for recording your own voice-over |
+| `v2/voice/` | recorded clips, the generated list of them, and the recording checklist |
 
 To add or change words, edit `v2/js/words.js` — the notation is explained at the top of the file
 (`"sh.i.p:🚢"` is *ship*, split into its three sounds, with a picture clue).
 
 Progress is stored in the browser's `localStorage` under `littleStarWitch.v2`.
+
+### How it is drawn
+
+Everything on screen is made in code — there are no model or image files.
+
+- **Light**: a warm key light with soft shadows, a cool sky/ground fill and a coloured rim light,
+  plus image-based lighting from a tiny sky scene baked for each place. Filmic (ACES) tone mapping,
+  a gentle bloom on the things that glow (stars, wand, lamps, windows), a touch of colour grading
+  and a vignette.
+- **Surfaces**: every material is physically based and carries a procedural detail texture —
+  knitted fur, wood grain, woven cloth, pitted stone, leaf clumps — that varies its colour and
+  roughness and gives it bumps. The textures are projected in world space, so nothing needs UVs.
+- **Shapes**: bodies, hats, pots and trunks are lathed or extruded with rounded edges; tree
+  canopies, rocks, snow and clouds are pushed around with simplex noise so no two look alike.
+- **Movement**: leaves and grass sway in the vertex shader, the pond has two layers of drifting
+  ripples, the potion swirls, and fireflies, pollen, snow or falling leaves drift on the GPU.
+- **Ground cover**: thousands of grass tufts, pebbles, flowers and fallen leaves are instanced,
+  each with its own size, turn and tint.
+
+There are three quality levels (grown-ups page → Graphics, or `?quality=fast|medium|best` in the
+address). On *auto* the game starts at the best level and steps down by itself if the device
+cannot keep up.
+
+### Recording your own voice
+
+The game looks for a recording of each word or sentence before it falls back to the computer
+voice, and "Only my recordings" on the grown-ups page silences the computer voice altogether.
+
+- **The easy way** — grown-ups page → *Record your own voice* opens the **Voice studio**
+  (`v2/record.html`). It shows each word and sentence in turn; press Space to record, Space to
+  stop, Enter for the next one. Silence at the ends is trimmed, every take is saved as you go,
+  and the game on that device uses it straight away. The words are listed place by place, so
+  recording just the Cottage Garden words is enough for the first five levels.
+- **To share recordings with every device**, download them from the studio as a `.zip` and unzip
+  it into `v2/voice/` (or load the zip in the studio on another device).
+- **With your own tools** — `v2/voice/README.md` explains the file names, and
+  `v2/voice/RECORDING-LIST.md` lists everything the game can say. Run
+  `node v2/voice/build-manifest.js` after adding files.
+
+The microphone only works on `https://` or `localhost`, so the studio cannot record when the game
+is opened straight from disk.
 
 ---
 

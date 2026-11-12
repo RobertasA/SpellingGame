@@ -28,6 +28,7 @@ document.addEventListener("visibilitychange", () => {
 
 function update(dt) {
   clock += dt;
+  TIME.value = clock;
   let target = 0;
   if (mode === "title") target = 1.2;
   else if (mode === "flight" || mode === "toBrew") target = updateFlight(dt);
@@ -46,7 +47,7 @@ function update(dt) {
   updateCutscene(dt);
   updateShowcase(dt);
   updateStory(dt);
-  ambient(dt, worldSpeed);
+  potLight.intensity += ((stage.visible ? 9 : 0) - potLight.intensity) * Math.min(1, dt * 3);
   animateSky(clock);
   updateParticles(dt);
   updateCamera(dt);
@@ -65,13 +66,14 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
   if (!paused) update(dt);
-  renderer.render(scene, camera);
+  renderFrame(dt);
   updateLabels();
 }
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h, false);
+  resizeRenderer();
+  resizeWorld();
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   if ($("kbd").classList.contains("active")) document.documentElement.style.setProperty("--kbd-h", $("kbd").offsetHeight + "px");
@@ -84,6 +86,7 @@ window.addEventListener("resize", resize);
 // fetch the word font now, so the first word doesn't flash in a different one
 if (document.fonts && document.fonts.load) { document.fonts.load('700 30px "Andika"'); document.fonts.load('600 20px "Fredoka"'); }
 
+applyQuality();
 rebuildWitch();
 buildKeyboard();
 wireUI();

@@ -51,7 +51,7 @@ function applyView(snap = false) {
   else v = flightView();
   setView(v[0], v[1], snap);
   const staged = stage.visible || mode === "map";
-  moonY = staged ? 12.5 : mode === "wardrobe" ? 13 : 19;
+  moonY = staged ? 8.4 : mode === "wardrobe" ? 13 : 19;
   clearing.on = staged || mode === "friends" || mode === "wardrobe";
   clearing.x = mode === "friends" || mode === "wardrobe" ? 0 : STAGE_X + 0.4;
   clearing.half = mode === "friends" ? 9 : mode === "wardrobe" ? 3.5 : 5.4;
@@ -113,7 +113,9 @@ function updateWitch(dt) {
   const armTo = casting ? 0.55 + Math.sin(clock * 14) * 0.12 : Math.sin(clock * 3) * 0.12;
   u.arm.rotation.z += (armTo - u.arm.rotation.z) * Math.min(1, dt * 10);
   u.star.rotation.z += dt * 2;
-  u.wandGlow.material.opacity = (casting ? 0.8 : 0.45) + Math.sin(clock * 6) * 0.1;
+  u.wandGlow.material.opacity = (casting ? 0.55 : 0.28) + Math.sin(clock * 6) * 0.08;
+  u.wandTip.getWorldPosition(wandLight.position);                     // the wand casts a little warm light of its own
+  wandLight.intensity += ((casting ? 10 : 4.5) - wandLight.intensity) * Math.min(1, dt * 8);
   u.cat.userData.tail.rotation.z = Math.sin(clock * 3) * 0.35;
   u.cat.userData.head.rotation.z = Math.sin(clock * 1.1) * 0.16;
   u.cat.position.y = 0.1 + Math.abs(Math.sin(clock * 2.2 + 1)) * 0.03;
@@ -177,7 +179,8 @@ function layoutCrew() {
   const shown = crew.filter(m => !(staged && m.userData.place === currentPlace));
   crew.forEach(m => { m.visible = shown.includes(m) && mode !== "friends" && mode !== "wardrobe" && mode !== "story"; });
   shown.forEach((m, i) => {
-    if (staged) m.userData.to.set(STAGE_X + 4.0 + Math.floor(i / 2) * 1.3, 0, i % 2 ? -1.9 : 0.9);
+    // the audience gathers behind the witch, out of the way of the friend being helped
+    if (staged) m.userData.to.set(STAGE_X - 4.3 - Math.floor(i / 3) * 1.15 - (i % 3 === 1 ? 0.35 : 0), 0, [1.3, -0.3, -1.9][i % 3]);
     else m.userData.to.set(WITCH_X + 2.2 - Math.floor(i / 2) * 1.45 - (i % 2) * 0.5, 0, i % 2 ? 3.6 : 2.3);
   });
 }
@@ -187,7 +190,7 @@ function updateCrew(dt) {
     if (!m.visible) continue;
     m.position.x += (m.userData.to.x - m.position.x) * Math.min(1, dt * 2.5);
     m.position.z += (m.userData.to.z - m.position.z) * Math.min(1, dt * 2.5);
-    m.rotation.y = mode === "flight" || mode === "title" ? 0.85 : 0.2;
+    m.rotation.y = mode === "flight" || mode === "title" ? 0.85 : 0.7;
     animateFriend(m, clock, dt, lively);
   }
 }
@@ -273,7 +276,7 @@ function spawnStar() {
   label.className = "label";
   label.style.opacity = "0";
   label.innerHTML = `<div class="word${word.tricky ? " tricky" : ""}"></div><div class="timer"><i></i></div>`;
-  label.firstChild.addEventListener("pointerdown", () => say(word.text, { rate: 0.75 }));    // tap a word to hear it
+  label.firstChild.addEventListener("pointerdown", () => say(word.text, { rate: 0.75, force: true }));    // tap a word to hear it
   labelsEl.appendChild(label);
 
   const star = { word, colorIndex, typed: 0, errors: 0, root, spot, mesh, label, restY, state: "waiting", t: 0, wiggle: 0, phase: rand(0, 6), life: wordLife(word) };
@@ -331,8 +334,8 @@ function updateStars(dt) {
     if (star.state === "rising" || star.state === "active") {
       m.rotation.z = Math.sin(clock * 2 + star.phase) * 0.18;
       const frac = star.typed / star.word.text.length;
-      U.mat.emissiveIntensity = 0.4 + 0.5 * frac + 0.08 * Math.sin(clock * 5 + star.phase);
-      U.glow.material.opacity = 0.45 + 0.4 * frac;
+      U.mat.emissiveIntensity = 0.9 + 1.5 * frac + 0.12 * Math.sin(clock * 5 + star.phase);     // glows brighter with every letter
+      U.glow.material.opacity = 0.22 + 0.3 * frac;
       const prog = clamp((REVEAL_X - star.root.position.x) / (REVEAL_X - MISS_X), 0, 1);
       const bar = star.label.lastChild.firstChild;
       bar.style.transform = `scaleX(${1 - prog})`;
@@ -571,7 +574,7 @@ function startLevel(n) {
     save.tips.fly = 1; persist();
     setTimeout(() => { if (mode === "flight") { hint("Type the letters to send the star home! ⭐", 7000); say("Type the letters to send the star home!"); } }, 2600);
   } else if (level.step === 0 && !save.helped[place.id]) {
-    setTimeout(() => { if (mode === "flight") say(place.plea + " " + place.need); }, 800);
+    setTimeout(() => { if (mode === "flight") caption(place.plea + " " + place.need, 5000); }, 800);   // shown as well as said, for when the voice is off
   }
 }
 function skyFullness() { return Object.keys(save.stars).length / LEVELS.length; }

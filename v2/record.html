@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice studio · Little Star Witch</title>
+<link rel="stylesheet" href="record.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <a class="back" href="index.html">← Back to the game</a>
+    <h1>Voice studio</h1>
+    <p class="lead">Record your own voice for Little Star Witch. The game uses your recordings straight away on this device.</p>
+    <div class="progress" aria-live="polite">
+      <div class="bar"><i id="barDevice"></i><i id="barShipped"></i></div>
+      <p id="progressText"></p>
+    </div>
+  </header>
+
+  <div id="notices" class="notices" role="status"></div>
+
+  <section class="card stage" aria-label="Current item">
+    <div class="where">
+      <span id="group" class="group"></span>
+      <span id="position" class="position"></span>
+    </div>
+    <p id="text" class="text" lang="en-GB"></p>
+    <p id="has" class="has"></p>
+    <p id="hint" class="hint"></p>
+
+    <div class="meter-wrap">
+      <span class="meter-label" id="meterLabel">Microphone</span>
+      <div class="meter" role="meter" aria-labelledby="meterLabel" aria-valuemin="0" aria-valuemax="100"><i id="meter"></i></div>
+      <span id="timer" class="timer"></span>
+    </div>
+
+    <button id="recBtn" class="rec" type="button">● Record</button>
+
+    <div class="actions">
+      <button id="backBtn" class="ghost" type="button">← Back</button>
+      <button id="playBtn" class="sky" type="button">▶ Play</button>
+      <button id="shippedBtn" class="ghost" type="button" hidden>▶ Shipped file</button>
+      <button id="delBtn" class="ghost" type="button">Remove</button>
+      <button id="nextBtn" class="mint keep" type="button">Keep &amp; next →</button>
+    </div>
+
+    <p id="status" class="status" aria-live="polite"></p>
+    <p class="keys">
+      <kbd>Space</kbd> record / stop · <kbd>Enter</kbd> or <kbd>→</kbd> keep and next · <kbd>←</kbd> back ·
+      <kbd>P</kbd> play · <kbd>Delete</kbd> remove
+    </p>
+  </section>
+
+  <section class="card tips" aria-label="Tips">
+    <h2>A few friendly tips</h2>
+    <ul>
+      <li>Find a quiet room, and hold the phone or microphone a hand's width from your mouth.</li>
+      <li>Say each word clearly and a little slowly, as you would to your child. For a word, say just the word.</li>
+      <li>Sentences are best read warmly, like a bedtime story.</li>
+      <li>You can stop any time. Every recording is saved the moment you finish it, so you can carry on another day.</li>
+    </ul>
+  </section>
+
+  <section class="card share" aria-label="Share and back up">
+    <h2>Keep your recordings safe</h2>
+    <p>Recordings live in this browser. To use them on other devices, download them as a zip, then load that zip on the other device, or unzip it into the game's <code>v2/voice/</code> folder.</p>
+    <div class="row">
+      <button id="zipBtn" class="gold" type="button">Download my recordings (.zip)</button>
+      <button id="importBtn" class="ghost" type="button">Load recordings from a .zip</button>
+      <input id="importFile" type="file" accept=".zip,application/zip" hidden>
+      <button id="clearBtn" class="ghost danger" type="button">Delete all my recordings on this device</button>
+    </div>
+  </section>
+
+  <section class="card list" aria-label="All words and sentences">
+    <div class="list-head">
+      <h2>Everything the game says</h2>
+      <label class="check"><input type="checkbox" id="onlyMissing" checked> Only what is still missing</label>
+    </div>
+    <div id="groups"></div>
+  </section>
+
+</div>
+
+<script src="voice/manifest.js"></script>
+<script src="js/words.js"></script>
+<script src="js/core.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/record.js"></script>
+</body>
+</html>

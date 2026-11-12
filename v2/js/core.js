@@ -1,6 +1,6 @@
 "use strict";
 /* =====================================================================
-   Core: tiny helpers, saved progress, sound, voice
+   Core: tiny helpers, saved progress, sound
    ===================================================================== */
 
 const $ = (id) => document.getElementById(id);
@@ -32,10 +32,15 @@ function freshSave() {
     totalStars: 0,        // little stars sent home, ever
     seenIntro: false, seenEnding: false,
     tips: {},             // one-off hints already shown
-    muted: false, speak: true,
+    muted: false,
+    voice: "on",          // read aloud: "on" (recordings, then computer voice), "recorded" (recordings only) or "off"
+    voiceLast: "on",      // the on-mode to go back to when the voice button is tapped again
     kbd: "qwerty",        // or "abc"
     showKbd: "auto",      // or "always"
     helper: true,         // glow the next key when stuck
+    brewMode: "mix",      // brewing: "mix" (the last word is a star challenge), "look" (always shown first) or "hear" (all challenges)
+    aced: 0,              // star challenges spelled with no peeking or help, ever
+    gfx: "auto",          // graphics: "auto", "best", "medium" or "fast"
     unlockAll: false,
   };
 }
@@ -44,7 +49,13 @@ function loadSave() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (s && typeof s === "object") {
-      return { ...fresh, ...s, look: { ...fresh.look, ...(s.look || {}) } };
+      const merged = { ...fresh, ...s, look: { ...fresh.look, ...(s.look || {}) } };
+      // older saves had a plain on/off switch called "speak"
+      if (s.voice === undefined && s.speak === false) merged.voice = "off";
+      delete merged.speak;
+      if (!["on", "recorded", "off"].includes(merged.voice)) merged.voice = "on";
+      if (merged.voiceLast !== "recorded") merged.voiceLast = "on";
+      return merged;
     }
   } catch (e) { /* no storage or corrupted — start fresh */ }
   return fresh;
@@ -170,7 +181,8 @@ const sfx = {
 
 const music = new Audio("../assets/audio/music.mp3");
 music.loop = true;
-music.volume = 0.22;
+const MUSIC_VOLUME = 0.22;      // voice.js dips it while a recording plays
+music.volume = MUSIC_VOLUME;
 let musicStarted = false;
 function playMusic() {
   const p = music.play();
@@ -180,33 +192,3 @@ function startMusic() {
   audio();
   if (!musicStarted && !save.muted) playMusic();
 }
-
-/* ================================ voice ================================ */
-
-let voice = null;
-function chooseVoice() {
-  if (!("speechSynthesis" in window)) return;
-  const vs = speechSynthesis.getVoices();
-  if (!vs.length) return;
-  const score = (v) =>
-    (/en[-_]GB/i.test(v.lang) ? 10 : /^en/i.test(v.lang) ? 4 : -100) +
-    (/female|serena|martha|kate|libby|sonia|maisie|hazel|susan|google uk english female/i.test(v.name) ? 3 : 0) +
-    (v.localService ? 1 : 0);
-  voice = vs.slice().sort((a, b) => score(b) - score(a))[0];
-  if (voice && score(voice) < 0) voice = null;
-}
-if ("speechSynthesis" in window) {
-  chooseVoice();
-  speechSynthesis.addEventListener?.("voiceschanged", chooseVoice);
-}
-function canSpeak() { return save.speak && !save.muted && "speechSynthesis" in window; }
-function say(text, { rate = 0.85, pitch = 1.25, queue = false } = {}) {
-  if (!canSpeak()) return;
-  const u = new SpeechSynthesisUtterance(text);
-  if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = "en-GB";
-  u.rate = rate;
-  u.pitch = pitch;
-  if (!queue) speechSynthesis.cancel();
-  speechSynthesis.speak(u);
-}
-function hush() { if ("speechSynthesis" in window) speechSynthesis.cancel(); }
