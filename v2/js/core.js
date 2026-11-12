@@ -3,7 +3,7 @@
    Core: tiny helpers, saved progress, sound
    ===================================================================== */
 
-const VERSION = "2.1";
+const VERSION = "2.1.1";
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -37,7 +37,8 @@ function freshSave() {
     voice: "on",          // read aloud: "on" (recordings, then computer voice), "recorded" (recordings only) or "off"
     voiceLast: "on",      // the on-mode to go back to when the voice button is tapped again
     kbd: "qwerty",        // or "abc"
-    showKbd: "auto",      // or "always"
+    showKbd: "auto",      // "auto" (only while no real keyboard is being typed on) or "always"
+    realKeys: null,       // was a real keyboard typed on last time? (null = not known yet)
     helper: true,         // glow the next key when stuck
     brewMode: "mix",      // brewing: "mix" (the last word is a star challenge), "look" (always shown first) or "hear" (all challenges)
     aced: 0,              // star challenges spelled with no peeking or help, ever

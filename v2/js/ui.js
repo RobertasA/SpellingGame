@@ -257,8 +257,23 @@ function buildKeyboard() {
     kbd.appendChild(r);
   }
 }
+/* The on-screen keyboard is only for children with no real one. A touch screen is a first guess;
+   after that, whatever was used last decides: typing a letter on a real keyboard tucks the screen
+   keys away, and touching the screen while spelling brings them back. */
+let realKeys = typeof save.realKeys === "boolean" ? save.realKeys : !touchDevice;
+function screenKeysWanted() { return save.showKbd === "always" || !realKeys; }
+function setRealKeys(on) {
+  if (realKeys === on) return;
+  realKeys = on;
+  save.realKeys = on; persist();
+  refreshScreenKeys();
+}
+function refreshScreenKeys() {
+  if (mode === "flight") { showKeyboard(!paused); applyView(); }
+  else if (mode === "brew") brewKeysRefresh();
+}
 function showKeyboard(on) {
-  const show = on && (touchDevice || save.showKbd === "always");
+  const show = on && screenKeysWanted();
   $("kbd").classList.toggle("active", show);
   document.documentElement.style.setProperty("--kbd-h", show ? $("kbd").offsetHeight + "px" : "0px");
 }
@@ -497,7 +512,7 @@ function openGrown() {
 function renderGrown() {
   const settings = [
     ["On-screen keyboard letters", () => save.kbd === "abc" ? "a b c" : "q w e r t y", () => { save.kbd = save.kbd === "abc" ? "qwerty" : "abc"; buildKeyboard(); }],
-    ["Show the on-screen keyboard", () => save.showKbd === "always" ? "Always" : "On tablets", () => { save.showKbd = save.showKbd === "always" ? "auto" : "always"; }],
+    ["Show the on-screen keyboard", () => save.showKbd === "always" ? "Always" : "Only without a real keyboard", () => { save.showKbd = save.showKbd === "always" ? "auto" : "always"; }],
     ["Glow the next letter when stuck", () => save.helper ? "On" : "Off", () => { save.helper = !save.helper; }],
     ["Brewing (a star challenge is heard, not shown)", () => ({ mix: "Last word is a star challenge", look: "Always look first", hear: "Star challenges only" })[save.brewMode] || "Last word is a star challenge", () => {
       const order = ["mix", "look", "hear"];
@@ -604,7 +619,7 @@ function wireUI() {
   on("grownBack", () => { showScreen(mode === "title" ? "titleScreen" : null); if (mode === "title") goTitle(); });
   on("resetBtn", () => {
     if (!confirm("Start again from the very beginning? All stars, friends and outfits will be cleared.")) return;
-    const keep = { muted: save.muted, voice: save.voice, voiceLast: save.voiceLast, kbd: save.kbd, showKbd: save.showKbd, helper: save.helper, gfx: save.gfx, brewMode: save.brewMode };
+    const keep = { muted: save.muted, voice: save.voice, voiceLast: save.voiceLast, kbd: save.kbd, showKbd: save.showKbd, realKeys: save.realKeys, helper: save.helper, gfx: save.gfx, brewMode: save.brewMode };
     save = { ...freshSave(), ...keep };
     persist();
     rebuildWitch();

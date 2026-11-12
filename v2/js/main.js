@@ -17,8 +17,15 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Backspace") { releaseTarget(); e.preventDefault(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (mode === "story" && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); if (!e.repeat) storyNext(); return; }
-  if (e.key.length === 1 && /[a-z]/i.test(e.key)) handleLetter(e.key.toLowerCase());
+  if (e.key.length === 1 && /[a-z]/i.test(e.key)) {
+    if (!e.repeat && (mode === "flight" || mode === "brew")) setRealKeys(true);
+    handleLetter(e.key.toLowerCase());
+  }
 });
+// a finger on the screen while spelling: the on-screen keys are wanted after all
+window.addEventListener("pointerdown", (e) => {
+  if (e.pointerType !== "mouse" && (mode === "flight" || mode === "brew") && !paused) setRealKeys(false);
+}, true);
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && (mode === "flight" || mode === "brew") && !paused) togglePause();

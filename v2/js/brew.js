@@ -105,7 +105,8 @@ function renderSlots() {
   // letter index where the current grapheme starts
   let start = 0;
   for (let k = 0; k < brew.slot; k++) start += w.graphemes[k].t.length;
-  el.innerHTML = wordHTML(w, (i) => (brew.phase === "spell" && i >= start && i < start + brew.inG ? "typed" : ""));
+  const ghost = brew.phase === "spell" && brew.challenge && brew.wrong >= 3 && !screenKeysWanted() ? start + brew.inG : -1;
+  el.innerHTML = wordHTML(w, (i) => (brew.phase === "spell" && i >= start && i < start + brew.inG ? "typed" : i === ghost ? "ghost" : ""));
   const gs = el.querySelectorAll(".g");
   gs.forEach((g, k) => {
     if (brew.phase === "spell") {
@@ -156,6 +157,11 @@ function brewHear() {
     }
     box.appendChild(r);
   }
+  const tip = document.createElement("div");
+  tip.className = "type-tip";
+  tip.textContent = "⌨️ Type the letters";
+  box.appendChild(tip);
+  box.classList.toggle("tucked", !screenKeysWanted());
   $("brewPeek").disabled = false;
   renderSlots();
   applyView();                                    // the panel is taller now
@@ -166,6 +172,14 @@ function brewHear() {
     caption(heard ? "⭐ Star challenge! This word is hiding. Listen… and spell it yourself!" : "⭐ Star challenge! This word is hiding. Can you spell it yourself?", 5200, true);
   } else caption(heard ? "⭐ Star challenge! Listen… and spell it." : "⭐ Star challenge! Can you spell it?", 2600, true);
   say(w.text, { rate: 0.75, queue: true });
+}
+
+/** Tuck the challenge keyboard away while a real one is being typed on, and bring it back for a finger. */
+function brewKeysRefresh() {
+  if (!brew.challenge || brew.phase !== "spell") return;
+  $("brewTiles").classList.toggle("tucked", !screenKeysWanted());
+  renderSlots();
+  applyView();
 }
 
 function makeTiles(w) {
@@ -228,6 +242,7 @@ function brewWrong(tileEl) {
       const key = brew.keys[brew.word.graphemes[brew.slot].t[brew.inG]];
       if (key) key.classList.add("glow");
       brew.helped = true;
+      renderSlots();                              // with no screen keys to light up, the letter shows faintly in its place
     }
   } else if (brew.wrong >= 2) {
     // show which sound comes next — nobody gets stuck

@@ -1,5 +1,11 @@
 # Changelog
 
+## Little Star Witch 2.1.1
+
+- The on-screen keyboard stays out of the way while a real keyboard is being typed on, in the
+  star challenge as well as when flying. Touching the screen while spelling brings it back.
+  When the challenge keyboard is hidden, a stuck child sees the next letter faintly in its place.
+
 ## Little Star Witch 2.1
 
 **Things to find**

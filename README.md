@@ -61,8 +61,9 @@ still hiding, and a couple of the ones already found turn up at the start of eve
   slipped into later levels for another go. Brewing favours the words that were hardest when flying.
 - **Dress up**: choose skin, hair, outfit, cat and broom sparkles, and name the witch.
   New outfits and cats unlock as stars are collected.
-- **On-screen keyboard** on tablets, in lower case, with vowels picked out; `q w e r t y` or
-  `a b c` order. `Esc` pauses, `Backspace` lets go of a word.
+- **On-screen keyboard** for touch screens, in lower case, with vowels picked out; `q w e r t y` or
+  `a b c` order. It tucks itself away as soon as a real keyboard is typed on, and comes back at
+  a touch. `Esc` pauses, `Backspace` lets go of a word.
 - **A page for grown-ups**: settings, the curriculum focus of every level, the child's wobbly
   words, and a switch to unlock every level so an older child can start further on.
 - **Works offline**: three.js and the fonts are bundled, sound effects are made in code, and after
@@ -183,7 +184,7 @@ the word is spelled, the gem just hides again. There's no losing, only trying ag
   See them all under **My Crew**.
 - Stars per level: 3 stars for catching every gem, fewer if some hid again.
 - Optional read-aloud: the game says each word when you catch it (🗣️ button).
-- Tablets get an on-screen keyboard. `Esc` pauses, `Backspace` lets go of a word.
+- Touch screens get an on-screen keyboard, hidden while a real one is in use. `Esc` pauses, `Backspace` lets go of a word.
 
 Progress, stars and your crew are saved in the browser (localStorage).
 
