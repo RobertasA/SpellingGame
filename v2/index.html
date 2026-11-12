@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#3b2f7a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Little Star Witch</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="labels"></div>
+<div id="loading"><div><div class="load-star">⭐</div>Waking up the little witch…</div></div>
+
+<!-- title -->
+<div class="overlay active" id="titleScreen">
+  <div class="title-wrap">
+    <h1><span class="t1">Little</span> <span class="t2">Star Witch</span></h1>
+    <p class="tagline">A spelling adventure</p>
+    <div class="btn-col">
+      <button class="big gold" id="playBtn">▶ Play</button>
+      <div class="btn-row">
+        <button class="sky" id="mapBtn">🗺️ Map</button>
+        <button class="mint" id="friendsBtn">💛 Friends</button>
+        <button class="pink" id="dressBtn">🎩 Dress up</button>
+      </div>
+    </div>
+    <div class="tiny-row">
+      <button class="link" id="grownBtn">For grown-ups</button>
+      <a class="link" href="../index.html">Gem Fairy (v1)</a>
+    </div>
+  </div>
+</div>
+
+<!-- map: one place at a time, the real place is behind the panel -->
+<div class="panel" id="mapUI">
+  <div class="panel-head">
+    <button class="round ghost" id="mapPrev" aria-label="Previous place">◀</button>
+    <div class="place-name"><span id="mapEmoji"></span> <span id="mapName"></span><small id="mapStage"></small></div>
+    <button class="round ghost" id="mapNext" aria-label="Next place">▶</button>
+  </div>
+  <p class="plea" id="mapPlea"></p>
+  <div class="potion-row" id="mapPotion"></div>
+  <div class="level-row" id="mapLevels"></div>
+  <button class="ghost small corner" id="mapBack">Back</button>
+</div>
+
+<!-- in-game HUD -->
+<div id="hud">
+  <div class="hud-left">
+    <div class="pill" id="levelPill"></div>
+    <div class="pill" id="jar"></div>
+  </div>
+  <div class="hud-right">
+    <button class="icon-btn" id="voiceBtn" title="Say the words out loud">🗣️</button>
+    <button class="icon-btn" id="muteBtn" title="Sound">🔊</button>
+    <button class="icon-btn" id="pauseBtn" title="Pause">⏸️</button>
+  </div>
+</div>
+<div id="banner"></div>
+<div id="caption"><span id="captionText"></span></div>
+<div id="hint"></div>
+<div id="toast"></div>
+
+<!-- brewing: look, cover, spell, check -->
+<div class="panel" id="brewUI">
+  <div class="brew-top">
+    <button class="round sky" id="brewSay" aria-label="Hear the word">🔊</button>
+    <div id="brewPic"></div>
+    <div id="brewSlots" class="word big"></div>
+    <button class="round gold" id="brewPeek" aria-label="Look at the word again">👀</button>
+  </div>
+  <div id="brewTiles"></div>
+  <div class="brew-dots" id="brewDots"></div>
+</div>
+
+<div id="kbd"></div>
+
+<!-- story captions -->
+<div class="panel" id="storyUI">
+  <p id="storyText"></p>
+  <div class="btn-row">
+    <button class="ghost small" id="storySkip">Skip</button>
+    <button class="big gold" id="storyNext">▶</button>
+  </div>
+</div>
+
+<!-- dress up -->
+<div class="panel" id="wardrobeUI">
+  <div class="tabs" id="wardrobeTabs"></div>
+  <div class="swatches" id="wardrobeSwatches"></div>
+  <div class="name-row">
+    <label for="nameInput">My witch is called</label>
+    <input id="nameInput" maxlength="10" autocomplete="off" autocapitalize="words" spellcheck="false">
+    <button class="gold" id="wardrobeDone">Done</button>
+  </div>
+</div>
+
+<!-- friends -->
+<div id="friendsBar">
+  <div class="pill" id="friendsTitle">My friends</div>
+  <button class="ghost" id="friendsBack">Back</button>
+</div>
+
+<!-- pause -->
+<div class="overlay dim" id="pauseScreen">
+  <div class="card">
+    <h2>Having a little rest 🌙</h2>
+    <p class="sub">The stars will wait for you.</p>
+    <div class="btn-row">
+      <button class="big mint" id="resumeBtn">Keep going</button>
+      <button class="ghost" id="quitBtn">Stop</button>
+    </div>
+  </div>
+</div>
+
+<!-- level complete -->
+<div class="overlay dim" id="completeScreen">
+  <div class="card">
+    <h2 id="completeTitle"></h2>
+    <div class="big-stars" id="completeStars"></div>
+    <div class="stats" id="completeStats"></div>
+    <div class="potion-row" id="completePotion"></div>
+    <div class="unlocks" id="completeUnlocks"></div>
+    <div class="btn-row">
+      <button class="big gold" id="nextBtn">Next ▶</button>
+      <button class="sky" id="replayBtn">Again</button>
+      <button class="ghost" id="menuBtn">Map</button>
+    </div>
+  </div>
+</div>
+
+<!-- grown-ups -->
+<div class="overlay dim" id="grownScreen">
+  <div class="card wide left">
+    <h2>For grown-ups</h2>
+    <p class="note">Little Star Witch practises spelling in two ways. <b>Flying</b>: read a word and type it to send a lost star home
+      (letter recognition, keyboard skills, reading with sound buttons). <b>Brewing</b>: look at a word, cover it, then build it
+      from its sounds (the "look, cover, write, check" routine used in schools). The thirty levels loosely follow the order of
+      phonics teaching in Reception and the Year 1 and Year 2 spelling content of the National Curriculum for England.
+      Nothing can be lost or failed — a star that isn't spelled in time simply hides and comes back.</p>
+    <h3>Settings</h3>
+    <div class="settings" id="settings"></div>
+    <h3>Words to practise again</h3>
+    <p class="note" id="wobbly"></p>
+    <h3>What each level covers</h3>
+    <div class="curriculum" id="curriculum"></div>
+    <div class="btn-row">
+      <button class="ghost small" id="resetBtn">Start again from the beginning</button>
+      <button class="gold" id="grownBack">Done</button>
+    </div>
+  </div>
+</div>
+
+<script src="lib/three.min.js"></script>
+<script>
+  if (!window.THREE) document.getElementById("loading").textContent = "The little witch couldn't fly in 😢 — some of the game files are missing.";
+</script>
+<script src="js/words.js"></script>
+<script src="js/core.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/models.js"></script>
+<script src="js/world.js"></script>
+<script src="js/game.js"></script>
+<script src="js/brew.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "Little Star Witch",
+  "short_name": "Star Witch",
+  "description": "A gentle spelling adventure for little witches aged 5 to 7.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#3b2f7a",
+  "theme_color": "#3b2f7a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
