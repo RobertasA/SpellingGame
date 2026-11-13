@@ -397,6 +397,25 @@ h1 .t2 { display: block; }
 .voice-setting .tabs { justify-content: flex-start; margin: 6px 0 8px; }
 .voice-setting .tabs button { font-size: 16px; padding: 8px 14px; }
 .voice-setting a.link { color: var(--plum); text-shadow: none; font-weight: 600; white-space: nowrap; }
+.key-map { display: flex; flex-direction: column; align-items: center; gap: 5px; margin: 6px 0 4px; }
+.key-map .row { display: flex; gap: 5px; justify-content: center; }
+.key-map .k {
+  position: relative; width: 44px; height: 50px; border-radius: 9px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; line-height: 1.1; border: 2px solid transparent;
+}
+.key-map .k b { font-family: var(--word-font); font-size: 20px; }
+.key-map .k small { font-size: 11px; min-height: 12px; }
+.key-map .k i { position: absolute; top: -7px; right: -6px; font-style: normal; font-size: 10px; font-weight: 700;
+  background: #fff; color: #b3384a; border-radius: 8px; padding: 0 4px; border: 1px solid #f0b8c0; }
+.key-map .ok, .key-legend .sw.ok { background: #d6f3dc; border-color: #9fd9ab; }
+.key-map .meh, .key-legend .sw.meh { background: #ffefc4; border-color: #f0cf72; }
+.key-map .slow, .key-legend .sw.slow { background: #ffd2d2; border-color: #ef9a9a; }
+.key-map .none, .key-legend .sw.none { background: #f3f0f8; border-color: #e2dcec; color: #9a92ab; }
+.key-legend { text-align: center; }
+.key-legend .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 2px solid; vertical-align: -2px; margin: 0 3px 0 8px; }
+.key-stats .kc { font-family: var(--word-font); font-size: 1.15em; }
+.key-stats .small { font-size: 14px; opacity: .8; }
+@media (max-width: 480px) { .key-map .row { gap: 3px; } .key-map .k { width: 30px; height: 44px; } .key-map .k b { font-size: 17px; } .key-map .k small { font-size: 9px; } }
 .curriculum { font-size: 15px; line-height: 1.4; }
 .curriculum .place { font-weight: 700; color: var(--plum); margin: 12px 0 4px; font-size: 17px; }
 .curriculum .lv { display: grid; grid-template-columns: 2.2em 9.5em 1fr; gap: 8px; padding: 4px 0; border-top: 1px solid #ebe3f7; }

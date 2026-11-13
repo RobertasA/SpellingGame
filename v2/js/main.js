@@ -18,7 +18,8 @@ window.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (mode === "story" && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); if (!e.repeat) storyNext(); return; }
   if (e.key.length === 1 && /[a-z]/i.test(e.key)) {
-    if (!e.repeat && (mode === "flight" || mode === "brew")) setRealKeys(true);
+    if (e.repeat) return;              // a key held down is one press, not a stream of wrong letters
+    if (mode === "flight" || mode === "brew") setRealKeys(true);
     handleLetter(e.key.toLowerCase());
   }
 });

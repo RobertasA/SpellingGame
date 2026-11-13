@@ -1,5 +1,22 @@
 # Changelog
 
+## Little Star Witch 2.3
+
+**Key timings on the grown-ups page**
+- A new *Keys* section shows which keys your child takes longest to find: a little keyboard
+  coloured green, yellow or red against their own usual speed, with the typical time under each
+  key and a count of wrong keys pressed when that one was wanted. Below it, the slowest keys and
+  the most common mix-ups (for example `b` for `d`).
+- Each key is timed from the letter before it in the same word, so the first letter of a word
+  (which also takes reading or remembering) is never timed, and neither is anything across a
+  pause, a peek or a star hiding. Typing counts in flying and in brewing; tapping sound tiles
+  does not. Only the last 20 times for each key count, so the picture follows the child.
+- *Clear key timings* starts the keys afresh without touching stars; "Start again from the
+  beginning" clears them too.
+
+**Keyboard**
+- Holding a key down on a real keyboard now counts as one press, not a stream of letters.
+
 ## Little Star Witch 2.2.1
 
 **Sound**

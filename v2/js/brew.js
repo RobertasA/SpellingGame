@@ -268,6 +268,7 @@ function fillSlot() {
   const need = brew.word.graphemes[brew.slot].t;
   const tile = brew.tiles.find(t => !t.used && t.t === need);
   if (tile) { tile.used = true; tile.el.classList.add("used"); tile.el.classList.remove("glow"); }
+  keyClockStart();                               // a tapped sound tile also starts the clock for the next key
   sfx.key(brew.slot);
   brew.slot++;
   brew.inG = 0;
@@ -289,17 +290,19 @@ function brewLetter(ch) {
   if (brew.phase !== "spell") return;
   const g = brew.word.graphemes[brew.slot].t;
   if (g[brew.inG] === ch) {
+    if (brew.slot === 0 && brew.inG === 0) keyClockStart(); else noteKeyTime(ch);
     if (brew.challenge) { brew.keys[ch].classList.remove("glow"); brew.wrong = 0; }
     brew.inG++;
     if (brew.inG >= g.length) fillSlot();
     else { sfx.tick(); renderSlots(); }
-  } else brewWrong(null);
+  } else { noteKeyMiss(g[brew.inG], ch); brewWrong(null); }
 }
 
 function brewPeek() {
   if (mode !== "brew" || brew.phase !== "spell") return;
   brew.phase = "peek";
   brew.peeks++;
+  keyClockStop();
   renderSlots();
   say(brew.word.text, { rate: 0.75, cut: true });
   later(() => { if (brew.phase === "peek") { brew.phase = "spell"; renderSlots(); } }, 1500 + brew.word.text.length * 120);
@@ -314,6 +317,7 @@ function cauldronScreenPos() {
 
 function brewWordDone() {
   brew.phase = "done";
+  keyClockStop();
   renderSlots();
   $("brewPeek").disabled = true;
   const w = brew.word;

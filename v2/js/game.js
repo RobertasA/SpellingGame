@@ -489,7 +489,7 @@ function missStar(star, counted = true) {
   star.t = 0;
   star.spot.userData.rustle = 0.5;
   star.label.style.opacity = "0";
-  if (flight.target === star) flight.target = null;
+  if (flight.target === star) { flight.target = null; keyClockStop(); }
   if (!counted) return;
   sfx.hide();
   flight.missed++;
@@ -575,16 +575,19 @@ function flightLetter(letter) {
   }
   const star = flight.target;
   if (star.word.text[star.typed] === letter) {
+    if (star.typed === 0) keyClockStart(); else noteKeyTime(letter);
     sfx.key(star.typed);
     star.typed++;
     flight.idle = 0;
     setNudge(false);
     zap(star);
     if (star.typed === star.word.text.length) {
+      keyClockStop();
       flight.jar.push(star.colorIndex);
       sendHome(star);
     } else renderWords();
   } else {
+    noteKeyMiss(star.word.text[star.typed], letter);
     sfx.wrong();
     star.errors++;
     wiggle(star);       // no progress lost — just a gentle nudge
@@ -594,6 +597,7 @@ function flightLetter(letter) {
 
 function releaseTarget() {
   if (mode !== "flight" || !flight.target) return;
+  keyClockStop();
   flight.target.typed = 0;
   flight.target = null;
   renderWords();

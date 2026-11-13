@@ -3,7 +3,7 @@
    Core: tiny helpers, saved progress, sound
    ===================================================================== */
 
-const VERSION = "2.2.1";
+const VERSION = "2.3";
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -30,6 +30,7 @@ function freshSave() {
     stars: {},            // level number -> best stars (1-3)
     helped: {},           // place id -> true once the friend has their potion
     words: {},            // word -> { ok, slip }   (slip = hid again or needed lots of tries)
+    keys: {},             // letter -> { t: [ms, ...the last few], miss, mix: { pressed instead -> count } }
     totalStars: 0,        // little stars sent home, ever
     seenIntro: false, seenEnding: false,
     tips: {},             // one-off hints already shown
@@ -92,6 +93,41 @@ function wobblyWords() {
     .filter(([, s]) => s.slip > 0 && s.slip * 2 > s.ok)
     .sort((a, b) => (b[1].slip - b[1].ok) - (a[1].slip - a[1].ok))
     .map(([w]) => w);
+}
+
+/* ============================= key timings =============================
+   For the grown-ups page: how long each letter takes to find, and which keys get
+   pressed in its place. A key is timed from the letter before it in the same word, so
+   the first letter of a word (which also takes reading or remembering) is never timed,
+   and nor is anything across a pause, a peek or a hidden star. */
+
+const KEY_KEEP = 20;            // timings kept per key, so the picture follows the child as they improve
+const KEY_MAX_MS = 20000;       // longer than this, the child was probably doing something else
+let keyClock = null;            // when the next key became the one to press (null = not timing)
+function keyClockStart() { keyClock = performance.now(); }
+function keyClockStop() { keyClock = null; }
+function keyStat(ch) { return save.keys[ch] || (save.keys[ch] = { t: [], miss: 0, mix: {} }); }
+/** A right key: time it (if the clock is running) and start the clock for the next one. */
+function noteKeyTime(ch) {
+  if (keyClock != null) {
+    const ms = performance.now() - keyClock;
+    if (ms <= KEY_MAX_MS) {
+      const k = keyStat(ch);
+      k.t.push(Math.round(ms));
+      if (k.t.length > KEY_KEEP) k.t.splice(0, k.t.length - KEY_KEEP);
+    }
+  }
+  keyClockStart();
+}
+/** A wrong key while a known letter was wanted. */
+function noteKeyMiss(want, got) {
+  const k = keyStat(want);
+  k.miss++;
+  k.mix[got] = (k.mix[got] || 0) + 1;
+}
+function median(arr) {
+  const a = arr.slice().sort((x, y) => x - y), m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
 }
 
 /* ================================ sound ================================ */

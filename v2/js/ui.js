@@ -230,6 +230,7 @@ function nextAfterComplete() {
 function togglePause() {
   if (mode !== "flight" && mode !== "brew") return;
   paused = !paused;
+  keyClockStop();
   showScreen(paused ? "pauseScreen" : null);
   if (mode === "flight") showKeyboard(!paused);
   if (paused) hush();
@@ -546,6 +547,7 @@ function renderGrown() {
     ? `These words have hidden or needed a few tries. They will pop up again while playing: <b style="font-family:var(--word-font)">${wob.join(", ")}</b>`
     : "Nothing yet — words that prove tricky will be listed here, and will come back for another go.";
   if (save.aced) $("wobbly").innerHTML += `<br>🌟 Star challenges spelled with no peeking and no help: <b>${save.aced}</b>`;
+  renderKeyStats();
   let html = "";
   PLACES.forEach((place, p) => {
     html += `<div class="place">${place.emoji} ${place.name} · ${place.stage}</div>`;
@@ -555,6 +557,59 @@ function renderGrown() {
     }
   });
   $("curriculum").innerHTML = html;
+}
+
+/** Which keys are slow to find, or often mixed up: a little keyboard coloured by speed, then the details. */
+const KEY_MIN_TIMES = 3;        // fewer timings than this and a key is left grey
+function renderKeyStats() {
+  const box = $("keyStats");
+  const stats = {};
+  for (const [ch, k] of Object.entries(save.keys || {})) {
+    if (!/^[a-z]$/.test(ch)) continue;
+    stats[ch] = { med: k.t.length >= KEY_MIN_TIMES ? median(k.t) : null, n: k.t.length, miss: k.miss || 0, mix: k.mix || {} };
+  }
+  const timed = Object.entries(stats).filter(([, s]) => s.med != null);
+  if (!timed.length && !Object.values(stats).some(s => s.miss)) {
+    box.innerHTML = `<p class="note">Nothing yet — after a few words have been typed, this shows which keys take longest to find.</p>`;
+    return;
+  }
+  // colours are against this child's own usual speed, not a target
+  const typical = timed.length ? median(timed.map(([, s]) => s.med)) : 0;
+  const shade = (s) => !s || s.med == null ? "none" : s.med > typical * 1.6 ? "slow" : s.med > typical * 1.2 ? "meh" : "ok";
+  const secs = (ms) => (ms / 1000).toFixed(1) + " s";
+  let html = `<div class="key-map">`;
+  for (const row of KBD_LAYOUTS[save.kbd] || KBD_LAYOUTS.qwerty) {
+    html += `<div class="row">`;
+    for (const ch of row) {
+      const s = stats[ch];
+      const tip = s ? `${ch}: ${s.med != null ? secs(s.med) + " typical" : "not enough yet"}, ${s.miss} wrong key${s.miss === 1 ? "" : "s"}` : `${ch}: not typed yet`;
+      html += `<div class="k ${shade(s)}" title="${tip}"><b>${ch}</b><small>${s && s.med != null ? secs(s.med) : ""}</small>${s && s.miss ? `<i>${s.miss}✗</i>` : ""}</div>`;
+    }
+    html += `</div>`;
+  }
+  html += `</div><p class="note key-legend"><span class="sw ok"></span>usual <span class="sw meh"></span>a bit slow <span class="sw slow"></span>slow <span class="sw none"></span>not enough yet
+    · ✗ = a different key was pressed when this one was wanted</p>`;
+
+  const lines = [];
+  const slow = timed.filter(([, s]) => s.med > typical * 1.2).sort((a, b) => b[1].med - a[1].med).slice(0, 6);
+  if (timed.length) lines.push(`Usual time to find a key: <b>${secs(typical)}</b>.`);
+  if (slow.length) lines.push(`Slowest to find: ${slow.map(([ch, s]) => `<b class="kc">${ch}</b> ${secs(s.med)}`).join(", ")}.`);
+  const mixes = [];
+  for (const [ch, s] of Object.entries(stats)) for (const [got, n] of Object.entries(s.mix)) mixes.push([ch, got, n]);
+  mixes.sort((a, b) => b[2] - a[2]);
+  const top = mixes.filter(m => m[2] >= 2).slice(0, 6);
+  if (top.length) lines.push(`Often pressed by mistake: ${top.map(([want, got, n]) => `<b class="kc">${got}</b> for <b class="kc">${want}</b> (${n}×)`).join(", ")}.`);
+  html += `<p class="note">${lines.join("<br>")}</p>
+    <p class="note small">Each key is timed from the letter before it in the same word, so reading time is left out; the first letter of a word is never timed.
+      Only the last ${KEY_KEEP} times for each key count, so this follows your child as they improve.</p>
+    <button class="ghost small" id="keyStatsClear">Clear key timings</button>`;
+  box.innerHTML = html;
+  $("keyStatsClear").addEventListener("click", () => {
+    if (!confirm("Clear the key timings? Stars and everything else are kept.")) return;
+    save.keys = {};
+    persist();
+    renderKeyStats();
+  });
 }
 
 const VOICE_CHOICES = [["on", "Read aloud"], ["recorded", "Only my recordings"], ["off", "Off — my child reads"]];
