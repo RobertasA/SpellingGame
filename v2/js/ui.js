@@ -83,6 +83,7 @@ function leaveEverything() {
   witchAnim.override = null;
   witchAnim.celebrate = 0;
   flight.arriving = false;
+  keyClockStop();
   $("hud").classList.remove("active");
   $("friendsBar").classList.remove("active");
   showKeyboard(false);
@@ -217,6 +218,26 @@ function showComplete() {
   if (unlocks.length) setTimeout(() => say("You found something new to wear!"), 900);
 }
 
+function showDrillDone() {
+  $("hud").classList.remove("active");
+  $("completeTitle").textContent = pick(["Clever fingers! ⌨️", "Speedy keys! ✨", "Key star! ⭐"]);
+  $("completeStars").innerHTML = "";
+  let stats = `⭐ Stars sent home: <b>${flight.sent}</b>`;
+  const kc = (list) => list.map(ch => `<b class="kc">${ch}</b>`).join(" ");
+  if (flight.learnt.length) stats += `<br>🌟 Now you know where ${kc(flight.learnt)} ${flight.learnt.length > 1 ? "are" : "is"}!`;
+  for (const id of flight.newCritters) { const c = CRITTER_BY_ID[id]; stats += `<br>${c.emoji} New friend: <b>${c.name}</b> the ${c.animal}!`; }
+  const focus = focusKeys();
+  persist();
+  if (focus.length) stats += `<br>⌨️ Keys to find next time: ${kc(focus)}`;
+  else stats += `<br>⌨️ You know every key so far!`;
+  $("completeStats").innerHTML = stats;
+  $("completePotion").innerHTML = "";
+  $("completeUnlocks").innerHTML = "";
+  $("nextBtn").style.display = "none";
+  showScreen("completeScreen");
+  sfx.reward();
+}
+
 function nextAfterComplete() {
   const n = flight.level.n;
   const next = LEVELS[n];
@@ -232,7 +253,7 @@ function togglePause() {
   paused = !paused;
   keyClockStop();
   showScreen(paused ? "pauseScreen" : null);
-  if (mode === "flight") showKeyboard(!paused);
+  if (mode === "flight") { showKeyboard(!paused); $("keyMap").classList.toggle("show", !paused && !!keyMapLit); }
   if (paused) hush();
 }
 
@@ -270,7 +291,7 @@ function setRealKeys(on) {
   refreshScreenKeys();
 }
 function refreshScreenKeys() {
-  if (mode === "flight") { showKeyboard(!paused); applyView(); }
+  if (mode === "flight") { showKeyboard(!paused); glowKey(glowCh); applyView(); }
   else if (mode === "brew") brewKeysRefresh();
 }
 function showKeyboard(on) {
@@ -278,11 +299,44 @@ function showKeyboard(on) {
   $("kbd").classList.toggle("active", show);
   document.documentElement.style.setProperty("--kbd-h", show ? $("kbd").offsetHeight + "px" : "0px");
 }
-let glowing = null;
+let glowing = null, glowCh = null;
+/** Point out a key: on the screen keyboard if it is showing, otherwise on a little picture of a real one. */
 function glowKey(ch) {
+  glowCh = ch || null;
   if (glowing) glowing.classList.remove("glow");
   glowing = ch ? keyEls[ch] : null;
   if (glowing) glowing.classList.add("glow");
+  showKeyMap(ch && !$("kbd").classList.contains("active") ? ch : null);
+}
+/* A small picture of a real keyboard (always q w e r t y, with the bumps on f and j), with one key lit:
+   where to look when the letter can't be found. */
+const keyMapEls = {};
+function buildKeyMap() {
+  const map = $("keyMap");
+  KBD_LAYOUTS.qwerty.forEach((row, r) => {
+    const div = document.createElement("div");
+    div.className = "row r" + r;
+    for (const ch of row) {
+      const k = document.createElement("i");
+      k.textContent = ch;
+      if (ch === "f" || ch === "j") k.className = "bump";
+      div.appendChild(k);
+      keyMapEls[ch] = k;
+    }
+    map.appendChild(div);
+  });
+  const space = document.createElement("div");
+  space.className = "row space";
+  space.appendChild(document.createElement("i"));
+  map.appendChild(space);
+}
+let keyMapLit = null;
+function showKeyMap(ch) {
+  if (keyMapLit) keyMapLit.classList.remove("lit");
+  keyMapLit = ch ? keyMapEls[ch] : null;
+  if (keyMapLit) keyMapLit.classList.add("lit");
+  $("keyMap").classList.toggle("show", !!keyMapLit);
+  document.documentElement.style.setProperty("--map-h", keyMapLit ? ($("keyMap").offsetHeight + 8) + "px" : "0px");   // messages sit above it
 }
 function flashKey(ch) {
   const b = keyEls[ch];
@@ -559,6 +613,24 @@ function renderGrown() {
   $("curriculum").innerHTML = html;
 }
 
+/** Where each key has got to in key practice, set out in order of how common the letters are in English. */
+function keyLearningHTML() {
+  const intro = introducedKeys(), focus = focusKeys();
+  const state = (ch) => !intro.includes(ch) ? "later" : focus.includes(ch) ? "focus" : keyBox(ch) >= KEY_KNOWN ? "known" : "wait";
+  const tip = { later: "not met in the levels yet", focus: "being practised now", known: "known", wait: "waiting its turn" };
+  const known = intro.split("").filter(ch => keyBox(ch) >= KEY_KNOWN).length;
+  const chips = LETTER_FREQ.split("").map(ch => `<i class="${state(ch)}" title="${ch}: ${tip[state(ch)]}">${ch}</i>`).join("");
+  return `<p class="note">${focus.length ? `Practising now: ${focus.map(ch => `<b class="kc">${ch}</b>`).join(", ")}. ` : ""}Known: <b>${known}</b> of the ${intro.length} keys met so far.</p>
+    <div class="key-freq">${chips}</div>
+    <p class="note key-legend"><span class="sw known"></span>known <span class="sw focus"></span>practising now <span class="sw wait"></span>waiting its turn <span class="sw later"></span>not met yet</p>
+    <p class="note small">The letters above are in order of how common they are in English, most common first.
+      <b>⌨️ Keys</b> on the title page is a short practice with one letter on each star. It works on at most ${FOCUS_MAX} keys at a time: those come round most often,
+      a key found quickly and without help a few times counts as known, and then the next one joins. Known keys come back less and less often, and a key
+      that goes wrong or slow comes back sooner. Until every key has been met in the levels, new keys join in the order the levels teach them
+      (<span class="kc">${KEY_ORDER.split("").join(" ")}</span>); after that, the most common letters go first.
+      When a letter can't be found, a little picture of the keyboard shows where it is (with "Glow the next letter when stuck" on).</p>`;
+}
+
 /** Which keys are slow to find, or often mixed up: a little keyboard coloured by speed, then the details. */
 const KEY_MIN_TIMES = 3;        // fewer timings than this and a key is left grey
 function renderKeyStats() {
@@ -570,7 +642,7 @@ function renderKeyStats() {
   }
   const timed = Object.entries(stats).filter(([, s]) => s.med != null);
   if (!timed.length && !Object.values(stats).some(s => s.miss)) {
-    box.innerHTML = `<p class="note">Nothing yet — after a few words have been typed, this shows which keys take longest to find.</p>`;
+    box.innerHTML = keyLearningHTML() + `<p class="note">No timings yet — after a few words have been typed, this shows which keys take longest to find.</p>`;
     return;
   }
   // colours are against this child's own usual speed, not a target
@@ -601,12 +673,12 @@ function renderKeyStats() {
   if (top.length) lines.push(`Often pressed by mistake: ${top.map(([want, got, n]) => `<b class="kc">${got}</b> for <b class="kc">${want}</b> (${n}×)`).join(", ")}.`);
   html += `<p class="note">${lines.join("<br>")}</p>
     <p class="note small">Each key is timed from the letter before it in the same word, so reading time is left out; the first letter of a word is never timed.
-      Only the last ${KEY_KEEP} times for each key count, so this follows your child as they improve.</p>
-    <button class="ghost small" id="keyStatsClear">Clear key timings</button>`;
-  box.innerHTML = html;
+      In key practice a letter is timed from when its star pops out. Only the last ${KEY_KEEP} times for each key count, so this follows your child as they improve.</p>
+    <button class="ghost small" id="keyStatsClear">Clear key timings and practice</button>`;
+  box.innerHTML = keyLearningHTML() + html;
   $("keyStatsClear").addEventListener("click", () => {
-    if (!confirm("Clear the key timings? Stars and everything else are kept.")) return;
-    save.keys = {};
+    if (!confirm("Clear the key timings and key practice? Stars and everything else are kept.")) return;
+    save.keys = {}; save.focus = []; save.drills = 0;
     persist();
     renderKeyStats();
   });
@@ -670,10 +742,12 @@ function wireUI() {
   on("mapBtn", () => curtain(() => openMap(LEVELS[nextLevel() - 1].place)));
   on("friendsBtn", () => curtain(openFriends));
   on("dressBtn", () => curtain(openWardrobe));
+  on("keysBtn", () => curtain(startDrill));
   on("grownBtn", openGrown);
   on("grownBack", () => { showScreen(mode === "title" ? "titleScreen" : null); if (mode === "title") goTitle(); });
   on("resetBtn", () => {
     if (!confirm("Start again from the very beginning? All stars, friends and outfits will be cleared.")) return;
+    keyNews.length = 0;
     const keep = { muted: save.muted, voice: save.voice, voiceLast: save.voiceLast, kbd: save.kbd, showKbd: save.showKbd, realKeys: save.realKeys, helper: save.helper, gfx: save.gfx, brewMode: save.brewMode };
     save = { ...freshSave(), ...keep };
     persist();
@@ -687,7 +761,7 @@ function wireUI() {
   on("resumeBtn", togglePause);
   on("quitBtn", () => curtain(() => openMap(currentPlace, false)));
   on("menuBtn", () => curtain(() => openMap(currentPlace, false)));
-  on("replayBtn", () => curtain(() => startLevel(flight.level.n)));
+  on("replayBtn", () => curtain(() => flight.level.drill ? startDrill() : startLevel(flight.level.n)));
   on("nextBtn", nextAfterComplete);
   document.querySelectorAll(".mute-toggle").forEach(b => b.addEventListener("click", () => {
     startMusic();

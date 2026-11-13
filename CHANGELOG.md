@@ -1,5 +1,30 @@
 # Changelog
 
+## Little Star Witch 2.4
+
+**Learning the keyboard**
+- **⌨️ Keys** on the title page is a short key practice: ten stars with one letter each. No
+  brewing afterwards; it is a warm-up for the fingers.
+- The letters are chosen by spaced repetition. At most three keys are worked on at a time, and
+  they come round most often. A key found quickly and without help a few times counts as known;
+  then the next key joins. Known keys come back less and less often, and a key that goes wrong,
+  hides or turns slow comes back sooner. "Quick" is judged against the child's own usual time.
+- Until every key has been met in the levels, new keys join in the order the levels teach them.
+  After that the most common letters in English go first:
+  `e t a o i n s h r d l c u m w f g y p b v k j x q z`.
+- Typing in the ordinary levels counts too, and the words of a level that use a key being
+  worked on come up a little sooner.
+- **A picture of the keyboard**: when a letter can't be found on a real keyboard, a small
+  keyboard appears at the bottom of the screen with that key lit (the screen keyboard already
+  glows its own key). In key practice a brand-new key is pointed out straight away. It follows
+  the "Glow the next letter when stuck" setting.
+- The grown-ups page shows the letters in order of how common they are, marked as known, being
+  practised, waiting or not met yet.
+
+**Key timings**
+- A wrong first letter counts against the star's key when only one star is on screen, and a slip
+  that is the first letter of another star on screen is no longer counted as a mix-up.
+
 ## Little Star Witch 2.3
 
 **Key timings on the grown-ups page**

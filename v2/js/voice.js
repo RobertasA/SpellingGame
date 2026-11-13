@@ -378,6 +378,7 @@ const VOICE_CHEERS = [
   "A lovely potion!",
   "All the stars are home!",
   "Type the letters to send the star home!",
+  "Find the letter on the keyboard!",
   "You found something new to wear!",
   "I'll read to you!",
 ];
