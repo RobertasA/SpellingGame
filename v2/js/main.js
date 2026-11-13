@@ -107,7 +107,10 @@ $("loading").remove();
 
 // Offline play once the game has been opened online (only when served over https or localhost).
 if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && (location.protocol === "https:" || /^(localhost|127\.)/.test(location.hostname))) {
-  navigator.serviceWorker.register("sw.js").catch(() => { /* no offline support here — the game still works */ });
+  // When a new version takes over while the title page is showing, load it at once (never in the middle of a game).
+  const hadWorker = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadWorker && mode === "title") location.reload(); });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => { /* no offline support here — the game still works */ });
 }
 
 // Handy for testing from the browser console (and for the automated checks).
