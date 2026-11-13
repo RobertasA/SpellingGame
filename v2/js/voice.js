@@ -369,6 +369,7 @@ const VOICE_STORY_EXTRA = [
   "All the stars are back in the sky. You did it!",
 ];
 const VOICE_CHEERS = [
+  "You found every word here!",
   "Time to brew! Look at the word… then spell it.",
   "Time to brew!",
   "⭐ Star challenge! This word is hiding. Listen… and spell it yourself!",
@@ -379,6 +380,7 @@ const VOICE_CHEERS = [
   "All the stars are home!",
   "Type the letters to send the star home!",
   "Find the letter on the keyboard!",
+  "Catch the firefly! Press its letter.",
   "You found something new to wear!",
   "I'll read to you!",
 ];

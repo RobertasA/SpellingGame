@@ -868,3 +868,65 @@ function buildStar(colorIndex) {
   g.userData = { mat, glow, body };
   return g;
 }
+
+/* A firefly: one letter to catch. Smaller and softer than a word star, with a glowing tail and flapping wings. */
+const FIREFLY_WING_GEO = (() => {
+  const g = new THREE.CircleGeometry(1, 14);       // a rounded wing; its inner edge sits at the origin
+  g.scale(0.5, 0.26, 1);
+  g.translate(0.5, 0.08, 0);
+  return g;
+})();
+function buildFirefly() {
+  const g = new THREE.Group();
+  const glowMat = new THREE.MeshStandardMaterial({ color: 0xc4ff2a, emissive: 0xa8ff00, emissiveIntensity: 1.6, roughness: 0.4 });
+  glowMat.userData.own = true;
+  const tail = new THREE.Mesh(SPHERE_MID, glowMat);          // the glowing tail
+  tail.scale.set(0.24, 0.2, 0.2);
+  tail.position.set(0.12, -0.02, 0);
+  g.add(tail);
+  const dark = new THREE.MeshStandardMaterial({ color: 0x4a3d2e, roughness: 0.7 });
+  dark.userData.own = true;
+  const head = new THREE.Mesh(SPHERE_MID, dark);
+  head.scale.set(0.11, 0.1, 0.1);
+  head.position.set(-0.13, 0.0, 0);
+  g.add(head);
+  eye(g, -0.17, 0.02, 0.07, 0.032);
+  eye(g, -0.17, 0.02, -0.07, 0.032);
+  // two thin feelers
+  for (const s of [1, -1]) {
+    const f = new THREE.Mesh(SPHERE_LOW, dark);
+    f.scale.set(0.012, 0.09, 0.012);
+    f.position.set(-0.2, 0.1, s * 0.04);
+    f.rotation.z = 0.7;
+    g.add(f);
+  }
+  // wings: pale and see-through, hinged on top of the body, pointing back; they flap in animateFirefly
+  const wingMat = new THREE.MeshBasicMaterial({ color: 0xd6f2ff, transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false });
+  wingMat.userData.own = true;
+  const wings = [];
+  [0.9, 0.45].forEach((base, i) => {
+    const w = new THREE.Group();
+    w.position.set(-0.04, 0.09, 0.03 - i * 0.06);
+    w.add(new THREE.Mesh(FIREFLY_WING_GEO, wingMat));
+    w.userData.base = base;
+    g.add(w);
+    wings.push(w);
+  });
+  const glow = glowSprite(0xdfff55, 1.5, 0.4);
+  glow.position.set(0.12, -0.02, -0.1);
+  g.add(glow);
+  g.scale.setScalar(2.1);
+  const root = new THREE.Group();          // (so the game can scale the whole firefly without touching its size)
+  root.add(g);
+  root.userData = { mat: glowMat, glow, wings, tail };
+  return root;
+}
+/** Flap the wings and pulse the glow; `t` is the time, `lively` is 1 when resting and more when flying off. */
+function animateFirefly(f, t, lively = 1) {
+  const U = f.userData;
+  const flap = Math.sin(t * 38 * lively);
+  U.wings.forEach(w => { w.rotation.z = w.userData.base + 0.4 * flap; });
+  const pulse = 0.5 + 0.5 * Math.sin(t * 3.2);
+  U.mat.emissiveIntensity = 1.2 + 1.2 * pulse;
+  U.glow.material.opacity = 0.32 + 0.3 * pulse;
+}

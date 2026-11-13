@@ -156,6 +156,9 @@ function renderMap() {
   $("mapEmoji").textContent = place.emoji;
   $("mapName").textContent = place.name;
   $("mapStage").textContent = place.stage;
+  const crowns = crownCount();
+  $("mapCrowns").textContent = crowns ? `👑 ${crowns}` : "";
+  $("mapCrowns").title = "Levels where every word has been found";
   $("mapPlea").textContent = save.helped[place.id] ? place.thanks : `${place.plea} ${place.need}`;
   $("mapPotion").innerHTML = potionRowHTML(p) + visitorRowHTML(p);
   $("mapPrev").disabled = p === 0;
@@ -170,7 +173,14 @@ function renderMap() {
     const b = document.createElement("button");
     b.className = locked ? "locked" : ["", "sky", "mint", "pink", "ghost"][i];
     if (!locked && lv.n === next && !stars) b.classList.add("next");
-    b.innerHTML = `${locked ? "🔒" : lv.n}<span class="focus">${lv.focus}</span><span class="stars">${"⭐".repeat(stars)}</span>`;
+    let found = "";
+    if (!locked) {
+      const { got, total } = levelWords(lv.n), crown = got >= total;
+      if (crown) b.classList.add("crowned");
+      else if (stars) b.classList.add("more");        // played, but words are still hiding: looks inviting, not wrong
+      found = `<span class="found" title="Words found">${crown ? "👑" : ""}<span class="bar"><i style="width:${Math.round(100 * got / total)}%"></i></span><small>${got}/${total}</small></span>`;
+    }
+    b.innerHTML = `${locked ? "🔒" : lv.n}<span class="focus">${lv.focus}</span><span class="stars">${"⭐".repeat(stars)}</span>${found}`;
     b.disabled = locked;
     b.addEventListener("click", () => { startMusic(); curtain(() => startLevel(lv.n)); });
     row.appendChild(b);
@@ -207,7 +217,21 @@ function showComplete() {
   if (!flight.newCritters.length && CRITTERS.some(c => c.place === level.place && !save.critters[c.id])) stats += `<br>🐾 Someone is still hiding in the ${place.name}…`;
   if (brew.aced.length) stats += `<br>🌟 Star challenge: you spelled <b style="font-family:var(--word-font)">${brew.aced.join(", ")}</b> all by yourself!`;
   if (placeDone(level.place) && helped) stats += `<br>${FRIEND_INFO[place.friend].emoji} <b>${place.friendName}</b> is your friend!`;
+  // words found: how many are new this time, and whether any are still hiding
+  const before = flight.wordsBefore || [];
+  const { got, total } = levelWords(level.n);
+  const fresh = levelFound(level.n).filter(t => !before.includes(t)).length;
+  const left = total - got, justCrowned = left === 0 && before.length < total;
+  if (fresh) stats += `<br>📖 New words: <b>${fresh}</b>`;
   $("completeStats").innerHTML = stats;
+  let again = "";
+  if (justCrowned) again = "👑 You found every word here!";
+  else if (left) again = `🔎 ${left === 1 ? "1 more word is" : left + " more words are"} hiding in this level. Play again to find ${left === 1 ? "it" : "them"}!`;
+  if (stars < 3) again += `${again ? "<br>" : ""}⭐ Play again and see if you can catch every star!`;
+  $("completeReplay").innerHTML = again;
+  const worthIt = left > 0 || stars < 3;
+  $("replayBtn").classList.toggle("inviting", worthIt);
+  $("replayBtn").innerHTML = worthIt ? `Again <span class="badge">${left > 0 ? "🔎" : "⭐"}</span>` : "Again";
   $("completePotion").innerHTML = potionRowHTML(level.place, level.step);
   const unlocks = newUnlocks(flight.starsBefore, starCount());
   $("completeUnlocks").innerHTML = unlocks.length ? "You found something new to wear!<br>" + unlocks.join("<br>") : "";
@@ -215,6 +239,7 @@ function showComplete() {
   showScreen("completeScreen");
   applyView();
   sfx.reward();
+  if (justCrowned) { setTimeout(() => { sfx.reward(); say("You found every word here!"); }, unlocks.length ? 2800 : 900); }
   if (unlocks.length) setTimeout(() => say("You found something new to wear!"), 900);
 }
 
@@ -233,6 +258,9 @@ function showDrillDone() {
   $("completeStats").innerHTML = stats;
   $("completePotion").innerHTML = "";
   $("completeUnlocks").innerHTML = "";
+  $("completeReplay").innerHTML = "";
+  $("replayBtn").classList.remove("inviting");
+  $("replayBtn").textContent = "Again";
   $("nextBtn").style.display = "none";
   showScreen("completeScreen");
   sfx.reward();
@@ -607,7 +635,7 @@ function renderGrown() {
     html += `<div class="place">${place.emoji} ${place.name} · ${place.stage}</div>`;
     for (let i = 0; i < LEVELS_PER_PLACE; i++) {
       const lv = LEVELS[p * LEVELS_PER_PLACE + i];
-      html += `<div class="lv"><span>${lv.n}${save.stars[lv.n] ? " ✓" : ""}</span><b>${lv.focus}</b><span>${lv.nc}</span></div>`;
+      html += `<div class="lv"><span>${lv.n}${save.stars[lv.n] ? " ✓" : ""}</span><b>${lv.focus}</b><span>${lv.nc}</span><span class="wf">${levelCrowned(lv.n) ? "👑 " : ""}${levelWords(lv.n).got}/${levelWords(lv.n).total}</span></div>`;
     }
   });
   $("curriculum").innerHTML = html;
@@ -628,7 +656,9 @@ function keyLearningHTML() {
       a key found quickly and without help a few times counts as known, and then the next one joins. Known keys come back less and less often, and a key
       that goes wrong or slow comes back sooner. Until every key has been met in the levels, new keys join in the order the levels teach them
       (<span class="kc">${KEY_ORDER.split("").join(" ")}</span>); after that, the most common letters go first.
-      When a letter can't be found, a little picture of the keyboard shows where it is (with "Glow the next letter when stuck" on).</p>`;
+      <b>In the levels</b>, the phonics decide which words a level can use and the keys decide which of them are used today: besides a keyboard level's own new letters,
+      the words lean on at most ${LEVEL_HARD_KEYS[0]} other keys that are not yet known (${LEVEL_HARD_KEYS[1]} in the phonics levels), so no level asks for too many hard keys at once.
+            When a letter can't be found, a little picture of the keyboard shows where it is (with "Glow the next letter when stuck" on).</p>`;
 }
 
 /** Which keys are slow to find, or often mixed up: a little keyboard coloured by speed, then the details. */

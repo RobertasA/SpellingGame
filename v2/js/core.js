@@ -3,7 +3,7 @@
    Core: tiny helpers, saved progress, sound
    ===================================================================== */
 
-const VERSION = "2.3.1";
+const VERSION = "2.4";
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -89,6 +89,19 @@ function noteWord(text, ok) {
   const w = save.words[text] || (save.words[text] = { ok: 0, slip: 0 });
   if (ok) w.ok++; else w.slip++;
 }
+/** The words of a level (counted once each) that the child has spelled cleanly at least once. */
+function levelFound(n) {
+  const seen = new Set();
+  for (const w of LEVELS[n - 1].words) if (save.words[w.text] && save.words[w.text].ok > 0) seen.add(w.text);
+  return [...seen];
+}
+function levelWords(n) {
+  const total = new Set(LEVELS[n - 1].words.map(w => w.text)).size;
+  return { got: levelFound(n).length, total };
+}
+/** A level wears a crown once every one of its words has been found. */
+function levelCrowned(n) { const { got, total } = levelWords(n); return total > 0 && got >= total; }
+function crownCount() { return LEVELS.filter(lv => levelCrowned(lv.n)).length; }
 /** Words that have slipped more often than they've been spelled cleanly — worth another go. */
 function wobblyWords() {
   return Object.entries(save.words)

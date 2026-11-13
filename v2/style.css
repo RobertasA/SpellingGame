@@ -427,9 +427,9 @@ h1 .t2 { display: block; }
 @media (max-width: 480px) { .key-map .row { gap: 3px; } .key-map .k { width: 30px; height: 44px; } .key-map .k b { font-size: 17px; } .key-map .k small { font-size: 9px; } }
 .curriculum { font-size: 15px; line-height: 1.4; }
 .curriculum .place { font-weight: 700; color: var(--plum); margin: 12px 0 4px; font-size: 17px; }
-.curriculum .lv { display: grid; grid-template-columns: 2.2em 9.5em 1fr; gap: 8px; padding: 4px 0; border-top: 1px solid #ebe3f7; }
+.curriculum .lv { display: grid; grid-template-columns: 2.2em 9.5em 1fr 4.5em; gap: 8px; padding: 4px 0; border-top: 1px solid #ebe3f7; }
 .curriculum .lv b { font-family: var(--word-font); }
-@media (max-width: 560px) { .curriculum .lv { grid-template-columns: 2em 1fr; } .curriculum .lv span:last-child { grid-column: 2; } }
+@media (max-width: 560px) { .curriculum .lv { grid-template-columns: 2em 1fr; } .curriculum .lv span:nth-child(n+3) { grid-column: 2; } }
 
 /* a little picture of a real keyboard: where to look for the letter */
 #keyMap {
@@ -454,6 +454,24 @@ h1 .t2 { display: block; }
   animation: keyMapPulse .7s ease-in-out infinite alternate; z-index: 1;
 }
 @keyframes keyMapPulse { from { transform: scale(1.15); } to { transform: scale(1.5); } }
+
+/* replaying a level */
+.panel-head .crowns { font-size: 18px; font-weight: 700; color: var(--plum); background: #fff6d6; border: 2px solid var(--gold); border-radius: 14px; padding: 2px 8px; white-space: nowrap; }
+.panel-head .crowns:empty { display: none; }
+.level-row .found { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; font-size: 13px; line-height: 1; margin-top: 2px; flex-wrap: wrap; }
+.level-row .found small { font-family: var(--word-font); font-size: 13px; font-weight: 700; }
+.level-row .found .bar { flex: 1 1 100%; height: 6px; border-radius: 4px; background: rgba(255, 255, 255, .55); overflow: hidden; order: 2; }
+.level-row .found .bar i { display: block; height: 100%; border-radius: 4px; background: var(--gold); min-width: 3px; }
+.level-row button.more .found small::after { content: " 🔎"; }
+.level-row button.crowned { box-shadow: 0 5px 0 var(--gold-deep), 0 0 0 3px rgba(255, 207, 74, .8); }
+.replay-note { font-size: 17px; line-height: 1.4; margin-top: 8px; color: var(--plum); font-weight: 600; }
+.replay-note:empty { display: none; }
+#replayBtn.inviting { animation: gentlePulse 1.8s ease-in-out infinite; }
+#replayBtn .badge { display: inline-block; margin-left: 4px; font-size: .85em; }
+@keyframes gentlePulse { 50% { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(120, 190, 255, .35); } }
+.curriculum .lv .wf { font-family: var(--word-font); font-weight: 700; white-space: nowrap; }
+@media (max-height: 520px) { .replay-note { font-size: 15px; margin-top: 4px; } .card .stats { font-size: 17px; margin-bottom: 4px; } .card .unlocks { font-size: 15px; margin-top: 4px; } }
+@media (prefers-reduced-motion: reduce) { #replayBtn.inviting { animation: none; } }
 
 #loading {
   position: fixed; inset: 0; display: grid; place-items: center;
@@ -505,3 +523,13 @@ h1 .t2 { display: block; }
   #brewTiles.keys button { flex: 1 1 0; height: 46px; font-size: 24px; border-radius: 11px; }
 }
 .version { text-align: center; opacity: .6; margin-top: 10px; }
+
+/* letter fireflies */
+.word.bug {
+  width: 1.5em; height: 1.5em; padding: 0; border-radius: 50%; justify-content: center; align-items: center; gap: 0;
+  background: #fbffd9; box-shadow: 0 0 0 4px #d4ff3a, 0 0 22px 6px rgba(223, 255, 85, .65);
+  font-size: clamp(30px, 4vw, 44px); line-height: 1;
+}
+.word.bug i { padding: 0; margin: 0; border-radius: 50%; width: 1.1em; text-align: center; }
+.label.bug { pointer-events: none; }
+.label.bug > .word { pointer-events: none; cursor: default; }

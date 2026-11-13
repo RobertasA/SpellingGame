@@ -293,20 +293,54 @@ function wordHTML(w, cls, typed = -1) {
 const flight = {
   level: null, queue: [], stars: [], target: null, pending: [],
   sent: 0, missed: 0, need: 0, lastLane: -1, idle: 0, nudge: false, arriving: false, played: [],
+  fly: null, warm: [], extra: [], extras: 0, lastFly: null, started: true,    // letter fireflies (see below)
 };
 const labelsEl = $("labels");
 
+/* How hard a level's typing may be. Its phonics decide which words it can use; the keys decide which of
+   those words are used today. A level may lean on its own new letters (in the keyboard levels) plus only a
+   few other keys that are not yet known. Words that need any further unknown key are left for another day,
+   unless there are too few words without them. The few keys let in are the ones that open up the most words,
+   with the keys being worked on in key practice preferred. */
+const LEVEL_HARD_KEYS = [2, 3];       // other unknown keys allowed: in a keyboard level, in a phonics level
+function levelKeyBudget(level) {
+  const own = level.letters ? level.focus.replace(/ /g, "") : "";
+  const hard = (ch) => keyBox(ch) < KEY_KNOWN && !own.includes(ch);
+  const needs = level.words.map(w => [...new Set(w.text)].filter(hard));       // for each word, the unknown keys it needs
+  const cands = [...new Set(needs.flat())];
+  const focus = focusKeys();
+  const size = Math.min(LEVEL_HARD_KEYS[level.letters ? 0 : 1], cands.length);
+  let best = [], bestScore = -1;
+  const tryOut = (set) => {
+    const score = needs.filter(n => n.every(ch => set.includes(ch))).length + set.filter(ch => focus.includes(ch)).length * 0.5;
+    if (score > bestScore) { bestScore = score; best = set.slice(); }
+  };
+  const choose = (from, set) => {
+    if (set.length === size) { tryOut(set); return; }
+    for (let i = from; i < cands.length; i++) { set.push(cands[i]); choose(i + 1, set); set.pop(); }
+  };
+  choose(0, []);
+  const allowed = own + best.join("");
+  return {
+    own, extra: best,
+    /** How many unknown keys beyond the budget this word would need. */
+    over: (w) => [...new Set(w.text)].filter(ch => keyBox(ch) < KEY_KNOWN && !allowed.includes(ch)).length,
+  };
+}
+
 function buildQueue(level) {
-  // fresh words first, then ones that have slipped before, then the rest
-  // ...and, among those, words that use a key being worked on come a little sooner
+  const budget = flight.budget = levelKeyBudget(level);
+  // words within the key budget first; among those, fresh words, then ones that have slipped before, then the rest
+  // ...and words that use a key being worked on come a little sooner
   const focus = focusKeys();
   const score = (w) => {
     const s = save.words[w.text];
-    return (s ? (s.slip > s.ok ? 1 : 2 + s.ok) : 0) + Math.random() - (focus.some(ch => w.text.includes(ch)) ? 1.2 : 0);
+    return budget.over(w) * 100 + (s ? (s.slip > s.ok ? 1 : 2 + s.ok) : 0) + Math.random() - (focus.some(ch => w.text.includes(ch)) ? 1.2 : 0);
   };
-  const words = level.words.slice().sort((a, b) => score(a) - score(b)).slice(0, level.stars);
-  // a couple of wobbly words from earlier levels come back for another go
-  const review = wobblyWords().map(t => WORD_INDEX.get(t)).filter(w => w && w.level < level.n).slice(0, 2);
+  const scored = level.words.map(w => [score(w), w]).sort((a, b) => a[0] - b[0]);
+  const words = scored.slice(0, level.stars).map(x => x[1]);
+  // a couple of wobbly words from earlier levels come back for another go (if their keys fit too)
+  const review = wobblyWords().map(t => WORD_INDEX.get(t)).filter(w => w && w.level < level.n && !budget.over(w)).slice(0, 2);
   review.forEach((w, i) => { if (!words.some(x => x.text === w.text)) words[words.length - 1 - i] = w; });
   return shuffle(words);
 }
@@ -368,21 +402,27 @@ function renderWord(star) {
   star.label.firstChild.innerHTML = wordHTML(star.word, cls, star.typed);
   star.label.classList.toggle("target", isTarget);
 }
-function renderWords() { flight.stars.forEach(s => { if (s.state !== "done") renderWord(s); }); }
+function renderWords() { flight.stars.forEach(s => { if (s.state !== "done") renderWord(s); }); renderFly(); }
 
 function nudgeStar() {
   if (flight.target) return flight.target;
   return flight.stars.filter(s => s.state === "active" || s.state === "rising").sort((a, b) => a.root.position.x - b.root.position.x)[0] || null;
 }
+/** The key that is wanted next: the firefly's letter, or the next letter of the star in play. */
+function nudgeLetter() {
+  if (catchable(flight.fly)) return flight.fly.ch;
+  const s = nudgeStar();
+  return s ? s.word.text[s.typed] : null;
+}
 function setNudge(on) {
   if (flight.nudge === on) return;
   flight.nudge = on;
-  const s = on ? nudgeStar() : null;
-  glowKey(s ? s.word.text[s.typed] : null);
+  glowKey(on ? nudgeLetter() : null);
   renderWords();
 }
 
 function updateStars(dt) {
+  updateFirefly(dt);
   for (const star of [...flight.stars]) {
     star.root.position.x -= worldSpeed * dt;
     star.t += dt;
@@ -397,6 +437,7 @@ function updateStars(dt) {
       star.spot.userData.rustle = 0.5;
       sfx.pop();
       if (flight.level.drill) { keyClockStart(); flight.idle = 0; }      // a practice letter is timed from the moment it pops out
+      else starTip(300);                                                  // (first time only: after any fireflies)
     }
     if (star.state === "rising") {
       const k = Math.min(star.t / 0.6, 1);
@@ -478,6 +519,7 @@ function removeStar(star) {
 function clearStars() {
   for (const s of [...flight.stars]) removeStar(s);
   flight.target = null;
+  clearFirefly();
 }
 
 function sparkleAt(obj, color, n) {
@@ -504,6 +546,7 @@ function missStar(star, counted = true) {
   else {
     noteWord(star.word.text, false);
     flight.queue.push(star.word);        // it will peek out again a little later
+    queueFirefly(star.word.text[star.typed]);       // and a firefly for the letter it got stuck on
   }
   flight.pending.push(0.6);
   setNudge(false);
@@ -576,11 +619,13 @@ function flightLetter(letter) {
   const live = flight.stars.filter(s => s.state === "rising" || s.state === "active");
   if (flight.target && !live.includes(flight.target)) flight.target = null;
 
+  if (catchable(flight.fly)) { fireflyLetter(letter); return; }       // a firefly is the only thing out: its letter is wanted
+
   if (!flight.target) {
     // the first letter chooses a star — the one closest to the witch wins ties
     const match = live.filter(s => s.word.text[0] === letter).sort((a, b) => a.root.position.x - b.root.position.x)[0];
     if (!match) {
-      if (live.length === 1) noteKeyMiss(live[0].word.text[0], letter);     // only one star to aim at: its first key was wanted
+      if (live.length === 1) { noteKeyMiss(live[0].word.text[0], letter); queueFirefly(live[0].word.text[0]); }     // only one star to aim at: its first key was wanted
       sfx.wrong();
       live.forEach(wiggle);
       flight.idle += 2;               // the helper glow arrives sooner
@@ -605,7 +650,7 @@ function flightLetter(letter) {
     } else renderWords();
   } else {
     // (a slip that is the first letter of another star on screen was probably meant for that star)
-    if (!live.some(s => s !== star && s.word.text[0] === letter)) noteKeyMiss(star.word.text[star.typed], letter);
+    if (!live.some(s => s !== star && s.word.text[0] === letter)) { noteKeyMiss(star.word.text[star.typed], letter); queueFirefly(star.word.text[star.typed]); }
     sfx.wrong();
     star.errors++;
     wiggle(star);       // no progress lost — just a gentle nudge
@@ -641,8 +686,186 @@ function zap(star) {
   sparkleAt(star.mesh, hex, 3);
 }
 
+/* ---------------------------- letter fireflies --------------------------- */
+/* A firefly holds ONE letter to practise a hard key. It is not a star: it never counts towards the jar, the
+   rating, the words found or the brewing; it only feeds the key-learning boxes (see core.js). A short
+   warm-up of them opens a level, and a key that goes wrong in a word brings one more after that word. */
+const FLY_LIFE = 12;                 // seconds a firefly stays, like a practice star
+const FLY_WARM_MAX = 5;              // most fireflies in a level's warm-up
+const FLY_EXTRA_MAX = 3;             // most top-up fireflies in a level
+const FLY_SPOTS = [[3.4, 4.3], [5.2, 4.8], [1.9, 4.9], [4.3, 3.8]];       // where they hover [x, y]
+const flySfx = {
+  pop() { tone(1500, { dur: 0.08, gain: 0.09, slide: 1.5 }); },
+  caught() { bell(SCALE[9], 0, 0.1, 0.3); bell(SCALE[11] || SCALE[9] * 1.25, 0.07, 0.07, 0.35); tone(2600, { at: 0.03, dur: 0.12, gain: 0.04, slide: 1.3 }); },
+  away() { tone(700, { dur: 0.25, type: "sine", gain: 0.06, slide: 0.6 }); },
+};
+function catchable(f) { return !!f && (f.state === "in" || f.state === "active"); }
+
+/** The letters of the warm-up: the level's not-yet-known keys, two of each if never found, at most five. */
+function warmupLetters() {
+  const b = flight.budget;
+  if (!b || flight.level.drill) return [];
+  const keys = [...new Set([...b.own, ...b.extra])].filter(ch => keyBox(ch) < KEY_KNOWN).sort((a, b2) => keyBox(a) - keyBox(b2));
+  const list = keys.slice(0, FLY_WARM_MAX);
+  for (const ch of keys) if (list.length < FLY_WARM_MAX && keyBox(ch) === 0 && list.filter(x => x === ch).length < 2) list.push(ch);
+  let out = list;
+  for (let tries = 0; tries < 30; tries++) {              // shuffle, with no letter twice in a row if it can be helped
+    out = shuffle(list);
+    if (out.every((ch, i) => i === 0 || ch !== out[i - 1])) break;
+  }
+  return out;
+}
+
+/** A top-up: one firefly for a letter that went wrong, after the current word (a few a level, never the same twice in a row). */
+function queueFirefly(ch) {
+  if (!ch || flight.level.drill || flight.extras >= FLY_EXTRA_MAX) return;
+  const last = flight.extra.length ? flight.extra[flight.extra.length - 1] : flight.lastFly;
+  if (ch === last || flight.extra.includes(ch)) return;
+  flight.extra.push(ch);
+  flight.extras++;
+}
+/** True while the warm-up or a top-up still has fireflies to show (the word stars wait for them). */
+function fireflyDue() { return !flight.level.drill && !!(flight.fly || flight.warm.length || flight.extra.length); }
+
+function startStars() {
+  flight.started = true;
+  for (let i = 0; i < flight.level.maxOnScreen; i++) flight.pending.push(1.6 + i * Math.min(4, flight.level.baseLife * 0.3));
+}
+/** A firefly has gone: on to the next one, or back to the words. */
+function fireflyDone() {
+  if (!flight.started && !flight.warm.length) startStars();
+  else if (!flight.pending.length) flight.pending.push(flight.warm.length || flight.extra.length ? 0.5 : 0.9);
+}
+
+function popFirefly() {
+  const ch = flight.warm.length ? flight.warm.shift() : flight.extra.shift();
+  if (!ch) return;
+  flight.lastFly = ch;
+  let spot;
+  do { spot = pick(FLY_SPOTS); } while (flight.flySpot === spot && FLY_SPOTS.length > 1);
+  flight.flySpot = spot;
+  const mesh = buildFirefly();
+  mesh.position.set(spot[0], spot[1], 0.8);
+  mesh.scale.setScalar(0.01);
+  scene.add(mesh);
+  const label = document.createElement("div");
+  label.className = "label bug";
+  label.style.opacity = "0";
+  label.innerHTML = `<div class="word bug"></div><div class="timer"><i></i></div>`;
+  labelsEl.appendChild(label);
+  const f = flight.fly = { ch, mesh, label, x: spot[0], y: spot[1], state: "in", t: 0, life: FLY_LIFE, phase: rand(0, 6), wiggle: 0 };
+  renderFly();
+  label.style.opacity = "1";
+  flySfx.pop();
+  sparkleAt(mesh, 0xdfff55, 8);
+  flight.idle = 0;
+  keyClockStart();                                 // timed from the moment it pops out, like a practice star
+  if (!save.tips.bugs) {
+    save.tips.bugs = 1; persist();
+    setTimeout(() => { if (mode === "flight") { hint("Catch the firefly! Press its letter. ✨", 6000); say("Catch the firefly! Press its letter."); } }, 900);
+  }
+}
+
+function renderFly() {
+  const f = flight.fly;
+  if (!f) return;
+  const hinted = flight.nudge && catchable(f);
+  f.label.firstChild.innerHTML = `<i class="${hinted ? "nudge" : ""}">${f.ch}</i>`;
+}
+
+/** The right or a wrong key while a firefly is out. */
+function fireflyLetter(letter) {
+  const f = flight.fly;
+  if (letter === f.ch) {
+    noteKeyTime(letter, { hinted: flight.nudge, trim: KEY_NOTICE_MS });
+    keyClockStop();
+    f.state = "caught";
+    f.t = 0;
+    f.label.style.opacity = "0";
+    flySfx.caught();
+    witchAnim.cast = 0.4;
+    witch.userData.wandTip.getWorldPosition(tmpV);
+    f.mesh.getWorldPosition(tmpV2);
+    for (let i = 0; i < 6; i++) {                  // a little trail of sparkles from the wand
+      const p = tmpV.clone().lerp(tmpV2, i / 6);
+      p.y += Math.sin((i / 6) * Math.PI) * 0.6;
+      emit({ pos: p, vel: new THREE.Vector3(0, rand(0.2, 0.5), 0), color: pick([0xe9ff6a, 0xffffff]), size: 0.26, life: 0.35 + i * 0.04, add: true });
+    }
+    sparkleAt(f.mesh, 0xe9ff6a, 10);
+    flight.idle = 0;
+    setNudge(false);
+    persist();
+  } else {
+    noteKeyMiss(f.ch, letter);
+    sfx.wrong();
+    f.label.classList.remove("wiggle");
+    void f.label.offsetWidth;
+    f.label.classList.add("wiggle");
+    flight.idle += 2;                              // the helper glow arrives sooner
+  }
+}
+
+function updateFirefly(dt) {
+  const f = flight.fly;
+  if (!f) return;
+  f.t += dt;
+  const m = f.mesh;
+  let lively = 1;
+  if (f.state === "in" || f.state === "active") {
+    if (f.state === "in") {
+      const k = Math.min(f.t / 0.5, 1);
+      m.scale.setScalar(Math.max(0.01, easeOutBack(k)));
+      if (k >= 1) f.state = "active";
+    }
+    m.position.set(f.x + Math.sin(clock * 1.3 + f.phase) * 0.45, f.y + Math.sin(clock * 2.3 + f.phase) * 0.18, 0.8 + Math.sin(clock * 0.9 + f.phase) * 0.2);
+    m.rotation.z = Math.sin(clock * 1.7 + f.phase) * 0.15;
+    f.life -= dt;
+    const bar = f.label.lastChild.firstChild;
+    bar.style.transform = `scaleX(${Math.max(0, f.life / FLY_LIFE)})`;
+    bar.style.background = f.life < FLY_LIFE * 0.25 ? "#ffb36b" : "";
+    if (f.life <= 0) {                             // too slow: it flutters off, nothing else happens
+      f.state = "away";
+      f.t = 0;
+      f.label.style.opacity = "0";
+      noteKeyHid(f.ch);
+      keyClockStop();
+      flySfx.away();
+      setNudge(false);
+      persist();
+    }
+    if (Math.random() < dt * 5) emit({ pos: m.position, vel: new THREE.Vector3(rand(-0.2, 0.2), rand(0, 0.3), 0), color: 0xe9ff6a, size: 0.2, life: 0.8, add: true });
+  } else {
+    // up and away, wings a-flutter
+    const dur = f.state === "caught" ? 1.0 : 1.3;
+    const k = Math.min(f.t / dur, 1);
+    lively = 1.6;
+    m.position.x += dt * (1.2 + 3 * k);
+    m.position.y += dt * (1.5 + 4 * k);
+    m.position.x += Math.sin(f.t * 9) * dt * 1.2;
+    m.scale.setScalar(Math.max(0.01, 1 - 0.8 * k * k));
+    if (f.state === "caught" && Math.random() < dt * 40) emit({ pos: m.position, vel: new THREE.Vector3(rand(-0.4, 0.4), rand(-0.5, 0.1), 0), color: pick([0xe9ff6a, 0xffffff]), size: rand(0.18, 0.32), life: rand(0.5, 0.9), add: true });
+    if (k >= 1) { clearFirefly(true); fireflyDone(); return; }
+  }
+  animateFirefly(m, clock + f.phase, lively);
+  if (f.state !== "caught" && f.state !== "away") project(m, 0.75, f.label, false, true);
+}
+
+/** Take the firefly off the screen. `keepQueue` keeps the warm-up and top-ups (it only finished its flutter). */
+function clearFirefly(keepQueue = false) {
+  const f = flight.fly;
+  if (f) { discard(f.mesh); f.label.remove(); }
+  flight.fly = null;
+  if (!keepQueue) Object.assign(flight, { warm: [], extra: [], extras: 0, lastFly: null, started: true });
+}
+
 /* --------------------------- level lifecycle -------------------------- */
 
+/** The first-ever tip about word stars (once). */
+function starTip(delay) {
+  if (save.tips.fly) return;
+  save.tips.fly = 1; persist();
+  setTimeout(() => { if (mode === "flight") { hint("Type the letters to send the star home! ⭐", 7000); say("Type the letters to send the star home!"); } }, delay);
+}
 function startLevel(n) {
   const level = LEVELS[n - 1];
   leaveEverything();
@@ -655,9 +878,13 @@ function startLevel(n) {
     level, queue: buildQueue(level), target: null, pending: [], sent: 0, missed: 0,
     need: level.stars, lastLane: -1, idle: 0, nudge: false, arriving: false, jar: [], played: [],
     starsBefore: starCount(), visited: false, newCritters: [],
+    wordsBefore: levelFound(level.n),                 // words already found, so the results can say which are new
   });
   gatherVisitors();
-  for (let i = 0; i < level.maxOnScreen; i++) flight.pending.push(1.6 + i * Math.min(4, level.baseLife * 0.3));
+  flight.warm = warmupLetters();                // a few fireflies for the hard keys first, then the words
+  flight.extra = []; flight.extras = 0; flight.lastFly = null; flight.started = true;
+  if (flight.warm.length) { flight.started = false; flight.pending.push(1.8); }
+  else startStars();
   mode = "flight";
   paused = false;
   $("hud").classList.add("active");
@@ -670,10 +897,9 @@ function startLevel(n) {
   applyView();
   setSkyFullness(skyFullness());
   banner(`${place.name}<small>${level.letters ? "new keys: " : ""}${level.focus}</small>`, 3200);
-  if (!save.tips.fly) {
-    save.tips.fly = 1; persist();
-    setTimeout(() => { if (mode === "flight") { hint("Type the letters to send the star home! ⭐", 7000); say("Type the letters to send the star home!"); } }, 2600);
-  } else if (level.step === 0 && !save.helped[place.id]) {
+  if (!save.tips.fly && !flight.warm.length) starTip(2600);
+  else if (!save.tips.fly) { /* the star tip waits for the first word star, after the fireflies */ }
+  else if (level.step === 0 && !save.helped[place.id]) {
     setTimeout(() => { if (mode === "flight") caption(place.plea + " " + place.need, 5000); }, 800);   // shown as well as said, for when the voice is off
   }
 }
@@ -732,7 +958,7 @@ function updateFlight(dt) {
     const live = flight.stars.filter(s => s.state === "rising" || s.state === "active");
     const life = live.length ? Math.max(...live.map(s => s.life)) : flight.level.baseLife;
     speed = (REVEAL_X - MISS_X) / life;
-    if (!live.length) speed *= 2.2;                                    // hurry to the next hiding spot
+    if (!live.length) speed *= flight.fly || !flight.started ? 0.5 : 2.2;    // hurry to the next hiding spot (a gentle drift while fireflies are out)
     else if (flight.target) {
       speed *= 0.6;                                                    // the wood waits a little while you spell
       if (flight.target.typed > 0 && flight.target.root.position.x < MISS_X + 2) speed *= 0.3;
@@ -741,13 +967,19 @@ function updateFlight(dt) {
       flight.pending[i] -= dt;
       if (flight.pending[i] <= 0) {
         flight.pending.splice(i, 1);
-        if (liveStars().length < flight.level.maxOnScreen) spawnStar();
+        if (fireflyDue()) {                        // a firefly goes first, and alone: the words wait for it
+          if (!flight.fly && liveStars().length === 0) popFirefly();
+          else flight.pending.push(0.4);
+        } else if (!flight.started) startStars();
+        else if (liveStars().length < flight.level.maxOnScreen) spawnStar();
       }
     }
-    if (live.length) {
+    if (live.length || catchable(flight.fly)) {
       flight.idle += dt;
-      // in key practice a brand-new key is pointed out straight away; one met before, only if it can't be found
-      const wait = flight.level.drill ? (keyBox(live[0].word.text) === 0 ? 0.5 : 4) : flight.level.place === 0 ? 4 : 7;
+      // a brand-new key (never found on its own) is pointed out straight away, whether in key practice, on a
+      // firefly or inside a word; one met before only if it can't be found
+      const fresh = keyBox(nudgeLetter()) === 0;
+      const wait = fresh ? (flight.level.drill ? 0.5 : 0.6) : flight.level.drill || flight.level.place === 0 ? 4 : 7;
       if (save.helper && flight.idle > wait && !flight.nudge) setNudge(true);
     }
   } else if (mode === "toBrew" && flight.arriving) {
@@ -771,6 +1003,7 @@ function endFlight() {
   showKeyboard(false);
   glowKey(null);
   for (const s of liveStars()) missStar(s, false);       // leftovers just hide again, no penalty
+  clearFirefly();
   witchAnim.celebrate = 0.001;
   setTimeout(() => {
     sfx.complete();
