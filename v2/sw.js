@@ -2,7 +2,7 @@
    Serves the game from a cache straight away and refreshes the cache in the
    background, so the game opens without a connection and updates itself the
    next time it is opened. */
-const CACHE = "little-star-witch-v8";
+const CACHE = "little-star-witch-v9";
 const CORE = [
   "./", "index.html", "style.css", "icon.svg", "manifest.webmanifest",
   "record.html", "record.css", "js/record.js",
@@ -14,7 +14,8 @@ const CORE = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
+  // "reload" goes past the browser's own cache: otherwise a new version could be stored as a mix of new and old files
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE.map(u => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(
@@ -60,7 +61,7 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const hit = await cache.match(req);
-      const fresh = fetch(req).then(res => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => hit);
+      const fresh = fetch(req.url, { cache: "no-cache" }).then(res => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => hit);
       return hit || fresh;
     })
   );

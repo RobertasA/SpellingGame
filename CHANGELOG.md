@@ -1,5 +1,13 @@
 # Changelog
 
+## Little Star Witch 2.3.1
+
+**Updates arrive whole**
+- After an update the game could open as a mix of new and old files: the new title page with the
+  old game behind it, so a new button did nothing and the version number stayed the same. A new
+  version is now fetched fresh in one go, and if it arrives while the title page is showing the
+  page reloads itself. It never reloads in the middle of a game.
+
 ## Little Star Witch 2.3
 
 **Learning the keyboard**
