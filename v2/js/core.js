@@ -3,7 +3,7 @@
    Core: tiny helpers, saved progress, sound
    ===================================================================== */
 
-const VERSION = "2.2.1";
+const VERSION = "2.3";
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -30,6 +30,9 @@ function freshSave() {
     stars: {},            // level number -> best stars (1-3)
     helped: {},           // place id -> true once the friend has their potion
     words: {},            // word -> { ok, slip }   (slip = hid again or needed lots of tries)
+    keys: {},             // letter -> { t: [ms, ...the last few], miss, mix: { pressed instead -> count }, box, due, last }
+    focus: [],            // the few keys being worked on now (see "learning the keys")
+    drills: 0,            // key-practice stars shown, ever: the clock that known keys rest by
     totalStars: 0,        // little stars sent home, ever
     seenIntro: false, seenEnding: false,
     tips: {},             // one-off hints already shown
@@ -93,6 +96,120 @@ function wobblyWords() {
     .sort((a, b) => (b[1].slip - b[1].ok) - (a[1].slip - a[1].ok))
     .map(([w]) => w);
 }
+
+/* ============================= key timings =============================
+   For the grown-ups page: how long each letter takes to find, and which keys get
+   pressed in its place. A key is timed from the letter before it in the same word, so
+   the first letter of a word (which also takes reading or remembering) is never timed,
+   and nor is anything across a pause, a peek or a hidden star. In key practice a star
+   holds one letter, and it is timed from the moment it pops out. */
+
+const KEY_KEEP = 20;            // timings kept per key, so the picture follows the child as they improve
+const KEY_MAX_MS = 20000;       // longer than this, the child was probably doing something else
+let keyClock = null;            // when the next key became the one to press (null = not timing)
+function keyClockStart() { keyClock = performance.now(); }
+function keyClockStop() { keyClock = null; }
+function keyStat(ch) { return save.keys[ch] || (save.keys[ch] = { t: [], miss: 0, mix: {}, box: 0, due: 0, last: 0 }); }
+function median(arr) {
+  const a = arr.slice().sort((x, y) => x - y), m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+/* ============================ learning the keys =========================
+   Spaced repetition, in the style of a box of flash cards. Every key sits in a box,
+   0 to 5. Found quickly with no help, it moves up a box; a wrong key, a star that
+   hides or a very slow find moves it down. From box 3 a key counts as known, and the
+   higher its box the longer it rests before key practice asks for it again.
+
+   Only a few keys are worked on at once (the focus keys): they come round most often,
+   and a new one joins only when one of them is known. Until every key has been met in
+   the levels, the next focus key is the next in teaching order; after that it is the
+   most common letter in English that is not yet known. */
+
+const LETTER_FREQ = "etaoinshrdlcumwfgypbvkjxqz";       // most common in English text first
+const KEY_ORDER = LEVELS.slice(0, LETTER_LEVELS).map(l => l.focus.replace(/ /g, "")).join("");   // the order the levels teach them
+const FOCUS_MAX = 3;            // keys being worked on at once
+const KEY_KNOWN = 3;            // the box from which a key counts as known
+const KEY_TOP = 5;
+const KEY_REST = [0, 0, 0, 6, 14, 30];      // practice stars before a known key is due again, by box
+const KEY_NOTICE_MS = 400;      // in key practice, a moment to notice the star is taken off the time
+const keyNews = [];             // keys that have just become known (key practice cheers for them)
+
+function keyBox(ch) { const k = save.keys[ch]; return k ? k.box || 0 : 0; }
+/** The letters met so far: those of every keyboard level that is open. */
+function introducedKeys() {
+  let s = "";
+  for (let i = 0; i < LETTER_LEVELS; i++) if (levelUnlocked(i + 1)) s += LEVELS[i].focus.replace(/ /g, "");
+  return s;
+}
+function keyRank(ch, all) { return (all ? LETTER_FREQ : KEY_ORDER).indexOf(ch); }
+/** What counts as quick for this child: a little over their own usual time, within sensible limits. */
+function keyFastMs() {
+  const meds = Object.values(save.keys).filter(k => k.t && k.t.length >= 3).map(k => median(k.t));
+  return clamp((meds.length >= 3 ? median(meds) : 2400) * 1.25, 1200, 3500);
+}
+function setKeyBox(ch, box) {
+  const k = keyStat(ch), was = k.box || 0;
+  k.box = clamp(box, 0, KEY_TOP);
+  k.due = (save.drills || 0) + KEY_REST[k.box];
+  if (was < KEY_KNOWN && k.box >= KEY_KNOWN) keyNews.push(ch);
+}
+/** The few keys being worked on now. A key stays until it is known; then the next one takes its place. */
+function focusKeys() {
+  const intro = introducedKeys(), all = intro.length >= 26;
+  const focus = (save.focus || []).filter(ch => intro.includes(ch) && keyBox(ch) < KEY_KNOWN).slice(0, FOCUS_MAX);
+  const waiting = intro.split("").filter(ch => !focus.includes(ch) && keyBox(ch) < KEY_KNOWN).sort((a, b) => keyRank(a, all) - keyRank(b, all));
+  while (focus.length < FOCUS_MAX && waiting.length) focus.push(waiting.shift());
+  save.focus = focus;
+  return focus;
+}
+/** The letter for the next practice star: mostly a focus key, now and then a known key that is due a look. */
+function nextDrillKey(avoid) {
+  const intro = introducedKeys(), all = intro.length >= 26;
+  const now = save.drills || 0;
+  const focus = focusKeys().filter(ch => ch !== avoid);
+  const known = intro.split("").filter(ch => keyBox(ch) >= KEY_KNOWN && ch !== avoid);
+  const due = known.filter(ch => keyStat(ch).due <= now)
+    .sort((a, b) => all ? keyRank(a, true) - keyRank(b, true) : keyStat(a).due - keyStat(b).due);
+  let ch;
+  if (focus.length && (!due.length || Math.random() < 0.65)) {
+    // the focus key that has waited longest
+    ch = shuffle(focus).sort((a, b) => (keyStat(a).last || 0) - (keyStat(b).last || 0))[0];
+  } else if (due.length) ch = due[0];
+  else if (known.length) ch = known.sort((a, b) => keyStat(a).due - keyStat(b).due)[0];
+  else ch = avoid || intro[0];
+  save.drills = now + 1;
+  keyStat(ch).last = save.drills;
+  return ch;
+}
+
+/** A right key: time it (if the clock is running) and start the clock for the next one.
+    `hinted`: the key was being pointed out; `trim`: milliseconds to take off (see KEY_NOTICE_MS). */
+function noteKeyTime(ch, { hinted = false, trim = 0 } = {}) {
+  if (keyClock != null) {
+    const ms = Math.max(150, performance.now() - keyClock - trim);
+    if (ms <= KEY_MAX_MS) {
+      const fast = keyFastMs();           // judged against the usual time before this press
+      const k = keyStat(ch);
+      k.t.push(Math.round(ms));
+      if (k.t.length > KEY_KEEP) k.t.splice(0, k.t.length - KEY_KEEP);
+      const box = k.box || 0;
+      if (hinted) { if (box === 0) setKeyBox(ch, 1); }           // shown where it is: that is the first step, and no more
+      else if (ms <= fast) setKeyBox(ch, box + 1);
+      else if (ms > fast * 2) setKeyBox(ch, box - 1);
+    }
+  }
+  keyClockStart();
+}
+/** A wrong key while a known letter was wanted. */
+function noteKeyMiss(want, got) {
+  const k = keyStat(want);
+  k.miss++;
+  k.mix[got] = (k.mix[got] || 0) + 1;
+  setKeyBox(want, (k.box || 0) - 1);
+}
+/** In key practice the star hid before its key was found. */
+function noteKeyHid(ch) { setKeyBox(ch, keyBox(ch) - 1); }
 
 /* ================================ sound ================================ */
 /* Every effect is made in code with the Web Audio API, so it works on any

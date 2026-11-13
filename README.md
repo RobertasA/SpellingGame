@@ -64,8 +64,12 @@ still hiding, and a couple of the ones already found turn up at the start of eve
 - **On-screen keyboard** for touch screens, in lower case, with vowels picked out; `q w e r t y` or
   `a b c` order. It tucks itself away as soon as a real keyboard is typed on, and comes back at
   a touch. `Esc` pauses, `Backspace` lets go of a word.
+- **Key practice** (⌨️ Keys on the title page): ten one-letter stars, chosen by spaced repetition.
+  At most three keys are worked on at once; known keys come back less and less often. When a
+  letter can't be found, a little picture of the keyboard shows where it is.
 - **A page for grown-ups**: settings, the curriculum focus of every level, the child's wobbly
-  words, and a switch to unlock every level so an older child can start further on.
+  words, which keys are slow to find or often mixed up, and a switch to unlock every level so
+  an older child can start further on.
 - **Works offline**: three.js and the fonts are bundled, sound effects are made in code, and after
   one visit over https the game is cached and can be added to a tablet's home screen.
 

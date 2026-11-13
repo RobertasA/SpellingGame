@@ -22,6 +22,7 @@
   --shadow: 0 8px 0 rgba(50, 30, 90, .22), 0 14px 30px rgba(50, 30, 90, .25);
   --word-font: "Andika", "Fredoka", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
   --kbd-h: 0px;
+  --map-h: 0px;             /* room for the little keyboard picture while it is showing */
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; overflow: hidden; }
@@ -189,7 +190,7 @@ h1 .t2 { display: block; }
 #banner small { display: block; font-family: var(--word-font); font-weight: 700; color: var(--plum); font-size: .9em; }
 
 #caption {
-  position: fixed; left: 50%; bottom: calc(var(--kbd-h) + 20px); transform: translate(-50%, 20px); opacity: 0;
+  position: fixed; left: 50%; bottom: calc(var(--kbd-h) + var(--map-h) + 20px); transform: translate(-50%, 20px); opacity: 0;
   background: rgba(40, 24, 80, .82); color: #fff; border-radius: 22px; padding: 10px 22px; z-index: 14;
   font-size: clamp(18px, 2.6vw, 24px); text-align: center; pointer-events: none;
   transition: all .35s; max-width: min(720px, calc(100vw - 32px));
@@ -206,7 +207,7 @@ h1 .t2 { display: block; }
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 #hint {
-  position: fixed; left: 50%; bottom: calc(var(--kbd-h) + 22px); transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: calc(var(--kbd-h) + var(--map-h) + 22px); transform: translateX(-50%);
   font-size: clamp(17px, 2.4vw, 22px); font-weight: 600; color: #fff;
   background: rgba(60, 40, 110, .7); padding: 8px 20px; border-radius: 999px;
   z-index: 6; pointer-events: none; opacity: 0; transition: opacity .5s;
@@ -397,11 +398,62 @@ h1 .t2 { display: block; }
 .voice-setting .tabs { justify-content: flex-start; margin: 6px 0 8px; }
 .voice-setting .tabs button { font-size: 16px; padding: 8px 14px; }
 .voice-setting a.link { color: var(--plum); text-shadow: none; font-weight: 600; white-space: nowrap; }
+.key-map { display: flex; flex-direction: column; align-items: center; gap: 5px; margin: 6px 0 4px; }
+.key-map .row { display: flex; gap: 5px; justify-content: center; }
+.key-map .k {
+  position: relative; width: 44px; height: 50px; border-radius: 9px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; line-height: 1.1; border: 2px solid transparent;
+}
+.key-map .k b { font-family: var(--word-font); font-size: 20px; }
+.key-map .k small { font-size: 11px; min-height: 12px; }
+.key-map .k i { position: absolute; top: -7px; right: -6px; font-style: normal; font-size: 10px; font-weight: 700;
+  background: #fff; color: #b3384a; border-radius: 8px; padding: 0 4px; border: 1px solid #f0b8c0; }
+.key-map .ok, .key-legend .sw.ok { background: #d6f3dc; border-color: #9fd9ab; }
+.key-map .meh, .key-legend .sw.meh { background: #ffefc4; border-color: #f0cf72; }
+.key-map .slow, .key-legend .sw.slow { background: #ffd2d2; border-color: #ef9a9a; }
+.key-map .none, .key-legend .sw.none { background: #f3f0f8; border-color: #e2dcec; color: #9a92ab; }
+.key-legend { text-align: center; }
+.key-legend .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 2px solid; vertical-align: -2px; margin: 0 3px 0 8px; }
+.key-freq { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.key-freq i { font-style: normal; font-family: var(--word-font); font-weight: 700; font-size: 17px; width: 27px; height: 30px; border-radius: 7px;
+  display: grid; place-items: center; border: 2px solid; }
+.key-freq .known, .key-legend .sw.known { background: #d6f3dc; border-color: #9fd9ab; }
+.key-freq .focus, .key-legend .sw.focus { background: #ffe9a0; border-color: #f0b93a; }
+.key-freq .wait, .key-legend .sw.wait { background: #f3f0f8; border-color: #cfc5e2; }
+.key-freq .later, .key-legend .sw.later { background: transparent; border-color: #ddd5ea; border-style: dashed; color: #b0a8c0; }
+.kc { font-family: var(--word-font); }
+.key-stats .kc { font-family: var(--word-font); font-size: 1.15em; }
+.key-stats .small { font-size: 14px; opacity: .8; }
+@media (max-width: 480px) { .key-map .row { gap: 3px; } .key-map .k { width: 30px; height: 44px; } .key-map .k b { font-size: 17px; } .key-map .k small { font-size: 9px; } }
 .curriculum { font-size: 15px; line-height: 1.4; }
 .curriculum .place { font-weight: 700; color: var(--plum); margin: 12px 0 4px; font-size: 17px; }
 .curriculum .lv { display: grid; grid-template-columns: 2.2em 9.5em 1fr; gap: 8px; padding: 4px 0; border-top: 1px solid #ebe3f7; }
 .curriculum .lv b { font-family: var(--word-font); }
 @media (max-width: 560px) { .curriculum .lv { grid-template-columns: 2em 1fr; } .curriculum .lv span:last-child { grid-column: 2; } }
+
+/* a little picture of a real keyboard: where to look for the letter */
+#keyMap {
+  position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translate(-50%, 12px); z-index: 7;
+  display: flex; flex-direction: column; gap: 4px; padding: 10px 14px 9px; border-radius: 16px;
+  background: rgba(250, 245, 255, .9); box-shadow: var(--shadow); pointer-events: none; opacity: 0; transition: opacity .35s, transform .35s;
+}
+#keyMap.show { opacity: 1; transform: translate(-50%, 0); }
+#keyMap .row { display: flex; gap: 4px; }
+#keyMap .r1 { margin-left: 10px; }
+#keyMap .r2 { margin-left: 26px; }
+#keyMap i {
+  position: relative; font-style: normal; font-family: var(--word-font); font-weight: 700; font-size: 15px; line-height: 1;
+  width: 27px; height: 27px; border-radius: 6px; display: grid; place-items: center;
+  background: #fff; color: #b9b0cc; box-shadow: 0 2px 0 #d6c8ec;
+}
+#keyMap i.bump::after { content: ""; position: absolute; bottom: 3px; left: 9px; right: 9px; height: 2px; border-radius: 2px; background: currentColor; }
+#keyMap .space { justify-content: center; }
+#keyMap .space i { width: 150px; height: 16px; }
+#keyMap i.lit {
+  background: var(--gold); color: var(--ink, #3b2f7a); box-shadow: 0 2px 0 var(--gold-deep), 0 0 0 4px rgba(255, 207, 74, .55);
+  animation: keyMapPulse .7s ease-in-out infinite alternate; z-index: 1;
+}
+@keyframes keyMapPulse { from { transform: scale(1.15); } to { transform: scale(1.5); } }
 
 #loading {
   position: fixed; inset: 0; display: grid; place-items: center;

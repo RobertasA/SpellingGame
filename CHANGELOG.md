@@ -1,5 +1,42 @@
 # Changelog
 
+## Little Star Witch 2.3
+
+**Learning the keyboard**
+- **⌨️ Keys** on the title page is a short key practice: ten stars with one letter each. No
+  brewing afterwards; it is a warm-up for the fingers.
+- The letters are chosen by spaced repetition. At most three keys are worked on at a time, and
+  they come round most often. A key found quickly and without help a few times counts as known;
+  then the next key joins. Known keys come back less and less often, and a key that goes wrong,
+  hides or turns slow comes back sooner. "Quick" is judged against the child's own usual time.
+- Until every key has been met in the levels, new keys join in the order the levels teach them.
+  After that the most common letters in English go first:
+  `e t a o i n s h r d l c u m w f g y p b v k j x q z`.
+- Typing in the ordinary levels counts too, and the words of a level that use a key being
+  worked on come up a little sooner.
+- **A picture of the keyboard**: when a letter can't be found on a real keyboard, a small
+  keyboard appears at the bottom of the screen with that key lit (the screen keyboard already
+  glows its own key). In key practice a brand-new key is pointed out straight away. It follows
+  the "Glow the next letter when stuck" setting.
+
+**Keys on the grown-ups page**
+- The letters in order of how common they are in English, marked as known, being practised,
+  waiting or not met yet.
+- Which keys your child takes longest to find: a little keyboard coloured green, yellow or red
+  against their own usual speed, with the typical time under each key and a count of wrong keys
+  pressed when that one was wanted. Below it, the slowest keys and the most common mix-ups (for
+  example `b` for `d`).
+- Each key is timed from the letter before it in the same word, so the first letter of a word
+  (which also takes reading or remembering) is never timed, and neither is anything across a
+  pause, a peek or a star hiding. In key practice a letter is timed from when its star pops out.
+  Typing counts in flying and in brewing; tapping sound tiles does not. Only the last 20 times
+  for each key count, so the picture follows the child.
+- *Clear key timings and practice* starts the keys afresh without touching stars; "Start again
+  from the beginning" clears them too.
+
+**Keyboard**
+- Holding a key down on a real keyboard now counts as one press, not a stream of letters.
+
 ## Little Star Witch 2.2.1
 
 **Sound**

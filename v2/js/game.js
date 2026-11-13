@@ -298,9 +298,11 @@ const labelsEl = $("labels");
 
 function buildQueue(level) {
   // fresh words first, then ones that have slipped before, then the rest
+  // ...and, among those, words that use a key being worked on come a little sooner
+  const focus = focusKeys();
   const score = (w) => {
     const s = save.words[w.text];
-    return (s ? (s.slip > s.ok ? 1 : 2 + s.ok) : 0) + Math.random();
+    return (s ? (s.slip > s.ok ? 1 : 2 + s.ok) : 0) + Math.random() - (focus.some(ch => w.text.includes(ch)) ? 1.2 : 0);
   };
   const words = level.words.slice().sort((a, b) => score(a) - score(b)).slice(0, level.stars);
   // a couple of wobbly words from earlier levels come back for another go
@@ -312,7 +314,11 @@ function buildQueue(level) {
 function liveStars() { return flight.stars.filter(s => s.state === "waiting" || s.state === "rising" || s.state === "active"); }
 function wordLife(w) { return flight.level.baseLife + Math.max(0, w.text.length - 3) * flight.level.perLetter; }
 
+/** Key practice: a star that holds a single letter. */
+function drillWord(ch) { return { text: ch, graphemes: [{ t: ch, split: false }], emoji: "", tricky: false, level: 0 }; }
+
 function pickWord() {
+  if (flight.level.drill) return drillWord(flight.lastKey = nextDrillKey(flight.lastKey));
   const firsts = liveStars().map(s => s.word.text[0]);
   let i = flight.queue.findIndex(w => !firsts.includes(w.text[0]));   // distinct first letters on screen
   if (i < 0) i = 0;
@@ -390,6 +396,7 @@ function updateStars(dt) {
       star.label.style.opacity = "1";
       star.spot.userData.rustle = 0.5;
       sfx.pop();
+      if (flight.level.drill) { keyClockStart(); flight.idle = 0; }      // a practice letter is timed from the moment it pops out
     }
     if (star.state === "rising") {
       const k = Math.min(star.t / 0.6, 1);
@@ -489,12 +496,15 @@ function missStar(star, counted = true) {
   star.t = 0;
   star.spot.userData.rustle = 0.5;
   star.label.style.opacity = "0";
-  if (flight.target === star) flight.target = null;
+  if (flight.target === star) { flight.target = null; keyClockStop(); }
   if (!counted) return;
   sfx.hide();
   flight.missed++;
-  noteWord(star.word.text, false);
-  flight.queue.push(star.word);        // it will peek out again a little later
+  if (flight.level.drill) noteKeyHid(star.word.text);          // the letter comes round again by itself
+  else {
+    noteWord(star.word.text, false);
+    flight.queue.push(star.word);        // it will peek out again a little later
+  }
   flight.pending.push(0.6);
   setNudge(false);
   if (!save.tips.hid) { save.tips.hid = 1; persist(); hint("Oops, the star hid! It will come back. 💫", 4000); }
@@ -529,13 +539,17 @@ function sendHome(star) {
   renderWords();
 
   sfx.collect();
-  say(star.word.text);
   witchAnim.hop = 1;
   witchAnim.cast = 0.5;
   flight.sent++;
-  flight.played.push({ word: star.word, errors: star.errors });
   save.totalStars++;
-  noteWord(star.word.text, star.errors <= 1);
+  if (flight.level.drill) {
+    for (const ch of keyNews.splice(0)) { flight.learnt.push(ch); toast(`🌟 You know where <b class="kc">${ch}</b> is!`); }
+  } else {
+    say(star.word.text);
+    flight.played.push({ word: star.word, errors: star.errors });
+    noteWord(star.word.text, star.errors <= 1);
+  }
   maybeVisitor(star);
   persist();
   setTimeout(renderJar, 500);
@@ -566,6 +580,7 @@ function flightLetter(letter) {
     // the first letter chooses a star — the one closest to the witch wins ties
     const match = live.filter(s => s.word.text[0] === letter).sort((a, b) => a.root.position.x - b.root.position.x)[0];
     if (!match) {
+      if (live.length === 1) noteKeyMiss(live[0].word.text[0], letter);     // only one star to aim at: its first key was wanted
       sfx.wrong();
       live.forEach(wiggle);
       flight.idle += 2;               // the helper glow arrives sooner
@@ -575,16 +590,22 @@ function flightLetter(letter) {
   }
   const star = flight.target;
   if (star.word.text[star.typed] === letter) {
+    if (flight.level.drill) noteKeyTime(letter, { hinted: flight.nudge, trim: KEY_NOTICE_MS });
+    else if (star.typed === 0) keyClockStart();
+    else noteKeyTime(letter, { hinted: flight.nudge });
     sfx.key(star.typed);
     star.typed++;
     flight.idle = 0;
     setNudge(false);
     zap(star);
     if (star.typed === star.word.text.length) {
+      keyClockStop();
       flight.jar.push(star.colorIndex);
       sendHome(star);
     } else renderWords();
   } else {
+    // (a slip that is the first letter of another star on screen was probably meant for that star)
+    if (!live.some(s => s !== star && s.word.text[0] === letter)) noteKeyMiss(star.word.text[star.typed], letter);
     sfx.wrong();
     star.errors++;
     wiggle(star);       // no progress lost — just a gentle nudge
@@ -594,6 +615,7 @@ function flightLetter(letter) {
 
 function releaseTarget() {
   if (mode !== "flight" || !flight.target) return;
+  keyClockStop();
   flight.target.typed = 0;
   flight.target = null;
   renderWords();
@@ -655,6 +677,52 @@ function startLevel(n) {
     setTimeout(() => { if (mode === "flight") caption(place.plea + " " + place.need, 5000); }, 800);   // shown as well as said, for when the voice is off
   }
 }
+/* Key practice: ten stars with one letter each, picked by the spaced-repetition rules in core.js.
+   No brewing afterwards: it is a quick warm-up for the fingers. */
+const DRILL_STARS = 10;
+function startDrill() {
+  const place = LEVELS[nextLevel() - 1].place;
+  const level = { n: 0, drill: true, letters: true, place, step: Math.floor(Math.random() * LEVELS_PER_PLACE), words: [],
+                  focus: focusKeys().join(" "), stars: DRILL_STARS, maxOnScreen: 1, baseLife: 12, perLetter: 0 };
+  leaveEverything();
+  clearHomeStars();
+  currentPlace = place;
+  setBiome(place, true, level.step);
+  stage.visible = false;
+  keyNews.length = 0;
+  Object.assign(flight, {
+    level, queue: [], target: null, pending: [1.4], sent: 0, missed: 0,
+    need: level.stars, lastLane: -1, idle: 0, nudge: false, arriving: false, jar: [], played: [],
+    starsBefore: starCount(), visited: false, newCritters: [], lastKey: null, learnt: [],
+  });
+  gatherVisitors();
+  mode = "flight";
+  paused = false;
+  $("hud").classList.add("active");
+  $("levelPill").textContent = "⌨️";
+  $("jar").style.display = "";
+  renderJar();
+  showKeyboard(true);
+  layoutCrew();
+  applyView();
+  setSkyFullness(skyFullness());
+  banner(`Key practice<small>${level.focus ? "keys to find: " + level.focus : "all the keys"}</small>`, 3200);
+  if (!save.tips.drill) {
+    save.tips.drill = 1; persist();
+    setTimeout(() => { if (mode === "flight") { hint("Find the letter on the keyboard! ⌨️", 6000); say("Find the letter on the keyboard!"); } }, 2400);
+  }
+}
+function endDrill() {
+  mode = "drillDone";
+  showKeyboard(false);
+  glowKey(null);
+  for (const s of liveStars()) missStar(s, false);
+  witchAnim.celebrate = 0.001;
+  persist();
+  setTimeout(() => { if (mode === "drillDone") sfx.complete(); }, 700);
+  setTimeout(() => { if (mode === "drillDone") showDrillDone(); }, 2400);
+}
+
 function skyFullness() { return Object.keys(save.stars).length / LEVELS.length; }
 
 function updateFlight(dt) {
@@ -678,7 +746,8 @@ function updateFlight(dt) {
     }
     if (live.length) {
       flight.idle += dt;
-      const wait = flight.level.place === 0 ? 4 : 7;
+      // in key practice a brand-new key is pointed out straight away; one met before, only if it can't be found
+      const wait = flight.level.drill ? (keyBox(live[0].word.text) === 0 ? 0.5 : 4) : flight.level.place === 0 ? 4 : 7;
       if (save.helper && flight.idle > wait && !flight.nudge) setNudge(true);
     }
   } else if (mode === "toBrew" && flight.arriving) {
@@ -697,6 +766,7 @@ function updateFlight(dt) {
 }
 
 function endFlight() {
+  if (flight.level.drill) { endDrill(); return; }
   mode = "toBrew";
   showKeyboard(false);
   glowKey(null);

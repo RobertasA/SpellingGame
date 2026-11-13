@@ -18,7 +18,8 @@ window.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (mode === "story" && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); if (!e.repeat) storyNext(); return; }
   if (e.key.length === 1 && /[a-z]/i.test(e.key)) {
-    if (!e.repeat && (mode === "flight" || mode === "brew")) setRealKeys(true);
+    if (e.repeat) return;              // a key held down is one press, not a stream of wrong letters
+    if (mode === "flight" || mode === "brew") setRealKeys(true);
     handleLetter(e.key.toLowerCase());
   }
 });
@@ -96,6 +97,7 @@ if (document.fonts && document.fonts.load) { document.fonts.load('700 30px "Andi
 applyQuality();
 rebuildWitch();
 buildKeyboard();
+buildKeyMap();
 wireUI();
 setIcons();
 goTitle();
@@ -111,5 +113,5 @@ if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && (loca
 // Handy for testing from the browser console (and for the automated checks).
 window.__game = {
   get mode() { return mode; }, get flight() { return flight; }, get brew() { return brew; }, get save() { return save; },
-  startLevel, openMap, goTitle, openFriends, openWardrobe,
+  startLevel, startDrill, openMap, goTitle, openFriends, openWardrobe,
 };
