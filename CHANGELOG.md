@@ -1,5 +1,20 @@
 # Changelog
 
+## Little Star Witch 2.4
+
+**No level with too many hard keys**
+- A level's phonics still decide which words it can use; the keys now decide which of those
+  words are used today. Besides a keyboard level's own new letters, the words of a level lean on
+  at most two other keys that are not yet known (three in the phonics levels from level 11).
+  Words that would need any further unknown key wait for another day.
+- The few extra keys let in are the ones that open up the most of the level's words, with the
+  keys being worked on in key practice preferred. As keys become known, more of the level's
+  words come into play, so playing a level again brings different words.
+- If too few of a level's words fit (a child who starts far into the game with no keys known
+  yet), the level is filled with the words that need the fewest extra keys.
+- Words that come back from earlier levels, and the words topped up for brewing, follow the
+  same rule.
+
 ## Little Star Witch 2.3.1
 
 **Updates arrive whole**

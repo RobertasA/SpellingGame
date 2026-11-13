@@ -67,6 +67,9 @@ still hiding, and a couple of the ones already found turn up at the start of eve
 - **Key practice** (⌨️ Keys on the title page): ten one-letter stars, chosen by spaced repetition.
   At most three keys are worked on at once; known keys come back less and less often. When a
   letter can't be found, a little picture of the keyboard shows where it is.
+- **No level with too many hard keys**: a level's phonics decide which words it can use, and the
+  keys decide which of them are used today, so its words lean on only a few keys that are not
+  yet known.
 - **A page for grown-ups**: settings, the curriculum focus of every level, the child's wobbly
   words, which keys are slow to find or often mixed up, and a switch to unlock every level so
   an older child can start further on.

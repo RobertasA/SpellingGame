@@ -39,7 +39,9 @@ function chooseBrewWords() {
     out.push(p.word);
     if (out.length === 3) break;
   }
-  for (const w of shuffle(level.words)) {
+  // top up with words whose keys fit the level's budget (see levelKeyBudget)
+  const over = (w) => flight.budget ? flight.budget.over(w) : 0;
+  for (const w of shuffle(level.words).sort((a, b) => over(a) - over(b))) {
     if (out.length >= 3) break;
     if (!seen.has(w.text) && w.text.length <= maxLen) { seen.add(w.text); out.push(w); }
   }

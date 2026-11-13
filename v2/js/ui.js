@@ -628,7 +628,9 @@ function keyLearningHTML() {
       a key found quickly and without help a few times counts as known, and then the next one joins. Known keys come back less and less often, and a key
       that goes wrong or slow comes back sooner. Until every key has been met in the levels, new keys join in the order the levels teach them
       (<span class="kc">${KEY_ORDER.split("").join(" ")}</span>); after that, the most common letters go first.
-      When a letter can't be found, a little picture of the keyboard shows where it is (with "Glow the next letter when stuck" on).</p>`;
+      <b>In the levels</b>, the phonics decide which words a level can use and the keys decide which of them are used today: besides a keyboard level's own new letters,
+      the words lean on at most ${LEVEL_HARD_KEYS[0]} other keys that are not yet known (${LEVEL_HARD_KEYS[1]} in the phonics levels), so no level asks for too many hard keys at once.
+            When a letter can't be found, a little picture of the keyboard shows where it is (with "Glow the next letter when stuck" on).</p>`;
 }
 
 /** Which keys are slow to find, or often mixed up: a little keyboard coloured by speed, then the details. */

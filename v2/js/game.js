@@ -296,17 +296,50 @@ const flight = {
 };
 const labelsEl = $("labels");
 
+/* How hard a level's typing may be. Its phonics decide which words it can use; the keys decide which of
+   those words are used today. A level may lean on its own new letters (in the keyboard levels) plus only a
+   few other keys that are not yet known. Words that need any further unknown key are left for another day,
+   unless there are too few words without them. The few keys let in are the ones that open up the most words,
+   with the keys being worked on in key practice preferred. */
+const LEVEL_HARD_KEYS = [2, 3];       // other unknown keys allowed: in a keyboard level, in a phonics level
+function levelKeyBudget(level) {
+  const own = level.letters ? level.focus.replace(/ /g, "") : "";
+  const hard = (ch) => keyBox(ch) < KEY_KNOWN && !own.includes(ch);
+  const needs = level.words.map(w => [...new Set(w.text)].filter(hard));       // for each word, the unknown keys it needs
+  const cands = [...new Set(needs.flat())];
+  const focus = focusKeys();
+  const size = Math.min(LEVEL_HARD_KEYS[level.letters ? 0 : 1], cands.length);
+  let best = [], bestScore = -1;
+  const tryOut = (set) => {
+    const score = needs.filter(n => n.every(ch => set.includes(ch))).length + set.filter(ch => focus.includes(ch)).length * 0.5;
+    if (score > bestScore) { bestScore = score; best = set.slice(); }
+  };
+  const choose = (from, set) => {
+    if (set.length === size) { tryOut(set); return; }
+    for (let i = from; i < cands.length; i++) { set.push(cands[i]); choose(i + 1, set); set.pop(); }
+  };
+  choose(0, []);
+  const allowed = own + best.join("");
+  return {
+    own, extra: best,
+    /** How many unknown keys beyond the budget this word would need. */
+    over: (w) => [...new Set(w.text)].filter(ch => keyBox(ch) < KEY_KNOWN && !allowed.includes(ch)).length,
+  };
+}
+
 function buildQueue(level) {
-  // fresh words first, then ones that have slipped before, then the rest
-  // ...and, among those, words that use a key being worked on come a little sooner
+  const budget = flight.budget = levelKeyBudget(level);
+  // words within the key budget first; among those, fresh words, then ones that have slipped before, then the rest
+  // ...and words that use a key being worked on come a little sooner
   const focus = focusKeys();
   const score = (w) => {
     const s = save.words[w.text];
-    return (s ? (s.slip > s.ok ? 1 : 2 + s.ok) : 0) + Math.random() - (focus.some(ch => w.text.includes(ch)) ? 1.2 : 0);
+    return budget.over(w) * 100 + (s ? (s.slip > s.ok ? 1 : 2 + s.ok) : 0) + Math.random() - (focus.some(ch => w.text.includes(ch)) ? 1.2 : 0);
   };
-  const words = level.words.slice().sort((a, b) => score(a) - score(b)).slice(0, level.stars);
-  // a couple of wobbly words from earlier levels come back for another go
-  const review = wobblyWords().map(t => WORD_INDEX.get(t)).filter(w => w && w.level < level.n).slice(0, 2);
+  const scored = level.words.map(w => [score(w), w]).sort((a, b) => a[0] - b[0]);
+  const words = scored.slice(0, level.stars).map(x => x[1]);
+  // a couple of wobbly words from earlier levels come back for another go (if their keys fit too)
+  const review = wobblyWords().map(t => WORD_INDEX.get(t)).filter(w => w && w.level < level.n && !budget.over(w)).slice(0, 2);
   review.forEach((w, i) => { if (!words.some(x => x.text === w.text)) words[words.length - 1 - i] = w; });
   return shuffle(words);
 }
