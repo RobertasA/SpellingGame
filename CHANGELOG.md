@@ -2,6 +2,29 @@
 
 ## Little Star Witch 2.4
 
+**Letter fireflies**
+- A level now opens with a short warm-up: up to five fireflies, each holding one letter. They are
+  the level's keys that are not yet known (two fireflies for a key never found unaided). Press
+  the letter to catch one. With every key known there is no warm-up.
+- A key that goes wrong inside a word, or a star that hides, brings one more firefly for that
+  letter after the word (at most three a level).
+- Fireflies are not stars: they do not fill the jar, cannot lower the star rating and are not
+  brewed. One that is not caught simply flutters off. They do count towards a key being known.
+
+**Hints for unfamiliar keys**
+- A key the child has never found unaided is pointed out almost at once (on the screen keyboard,
+  or on the keyboard picture when a real keyboard is in use), on fireflies and inside words.
+  Keys met before keep the usual wait. It follows "Glow the next letter when stuck".
+
+**A reason to play a level again**
+- Each play-through uses only some of a level's words. The map now shows the words found in
+  each level (a small bar and a count), and a 👑 once every word has been found; the crowns
+  are counted at the top of the map.
+- The results card says how many new words were found and how many are still hiding, and the
+  "Again" button gently pulses when there is something to come back for (words left, or fewer
+  than three stars).
+- The grown-ups page lists the words found beside every level.
+
 **No level with too many hard keys**
 - A level's phonics still decide which words it can use; the keys now decide which of those
   words are used today. Besides a keyboard level's own new letters, the words of a level lean on

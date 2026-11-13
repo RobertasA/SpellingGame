@@ -470,6 +470,7 @@ h1 .t2 { display: block; }
 #replayBtn .badge { display: inline-block; margin-left: 4px; font-size: .85em; }
 @keyframes gentlePulse { 50% { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(120, 190, 255, .35); } }
 .curriculum .lv .wf { font-family: var(--word-font); font-weight: 700; white-space: nowrap; }
+@media (max-height: 520px) { .replay-note { font-size: 15px; margin-top: 4px; } .card .stats { font-size: 17px; margin-bottom: 4px; } .card .unlocks { font-size: 15px; margin-top: 4px; } }
 @media (prefers-reduced-motion: reduce) { #replayBtn.inviting { animation: none; } }
 
 #loading {

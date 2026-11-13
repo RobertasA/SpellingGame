@@ -67,6 +67,10 @@ still hiding, and a couple of the ones already found turn up at the start of eve
 - **Key practice** (⌨️ Keys on the title page): ten one-letter stars, chosen by spaced repetition.
   At most three keys are worked on at once; known keys come back less and less often. When a
   letter can't be found, a little picture of the keyboard shows where it is.
+- **Letter fireflies**: a short warm-up of single letters on fireflies opens a level, for its keys
+  that are not yet known; they never count as stars. Unfamiliar keys are pointed out at once.
+- **Words to find in every level**: the map shows the words found in each level and a crown when
+  all are found, so there is a reason to play a level again.
 - **No level with too many hard keys**: a level's phonics decide which words it can use, and the
   keys decide which of them are used today, so its words lean on only a few keys that are not
   yet known.
