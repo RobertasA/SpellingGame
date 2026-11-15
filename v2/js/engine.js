@@ -168,6 +168,7 @@ function renderFrame(dt) {
   quality.slow = Math.max(0, quality.slow + (dt > 1 / 38 ? dt : -dt * 0.5));
   if (quality.slow > 2.5) {
     quality.level--;
+    track("gfx", { level: quality.level });
     quality.slow = 0;
     quality.frames = 30;
     applyQuality();

@@ -29,7 +29,9 @@ window.addEventListener("pointerdown", (e) => {
 }, true);
 
 document.addEventListener("visibilitychange", () => {
+  track(document.hidden ? "hide" : "show", { mode });
   if (document.hidden && (mode === "flight" || mode === "brew") && !paused) togglePause();
+  if (document.hidden) flushLog();
 });
 
 /* -------------------------------- loop -------------------------------- */
@@ -100,6 +102,11 @@ buildKeyboard();
 buildKeyMap();
 wireUI();
 setIcons();
+track("session", {
+  v: VERSION, ...deviceInfo(), profile: profile.id, gfx: quality.level, gfxAuto: quality.auto, voice: voiceMode(), realKeys,
+  levels: Object.keys(save.stars).length, stars: starCount(), totalStars: save.totalStars,
+  known: LETTER_FREQ.split("").filter(ch => keyBox(ch) >= KEY_KNOWN).join(""),
+});
 goTitle();
 resize();
 requestAnimationFrame(frame);
@@ -116,5 +123,6 @@ if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && (loca
 // Handy for testing from the browser console (and for the automated checks).
 window.__game = {
   get mode() { return mode; }, get flight() { return flight; }, get brew() { return brew; }, get save() { return save; },
+  get profile() { return profile; }, get profiles() { return profiles; }, saveFileData, flushLog,
   startLevel, startDrill, openMap, goTitle, openFriends, openWardrobe,
 };

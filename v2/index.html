@@ -37,6 +37,7 @@
     <div class="tiny-row">
       <button class="link" id="grownBtn">For grown-ups</button>
       <a class="link" href="../index.html">Gem Fairy (v1)</a>
+      <button class="link" id="profileTag" title="Profiles"></button>
     </div>
   </div>
 </div>
@@ -163,6 +164,17 @@
     <h3>Settings</h3>
     <div class="voice-setting" id="voiceSetting"></div>
     <div class="settings" id="settings"></div>
+    <h3>Profiles</h3>
+    <p class="note">Each profile is a game of its own, with its own stars, friends, outfits and key practice. Add one to try something out
+      (or for another child) without touching the game that is already here.</p>
+    <div class="profiles" id="profiles"></div>
+    <h3>Save file</h3>
+    <p class="note" id="saveNote"></p>
+    <div class="btn-row start">
+      <button class="sky small" id="saveDownload">⬇ Download save file</button>
+      <button class="ghost small" id="saveLoad">Load a save file…</button>
+      <input type="file" id="saveFile" accept=".json,application/json" hidden>
+    </div>
     <h3>Words to practise again</h3>
     <p class="note" id="wobbly"></p>
     <h3>Keys</h3>
@@ -185,6 +197,7 @@
 <script src="js/words.js"></script>
 <script src="voice/manifest.js"></script>
 <script src="js/core.js"></script>
+<script src="js/track.js"></script>
 <script src="js/voice.js"></script>
 <script src="js/textures.js"></script>
 <script src="js/engine.js"></script>

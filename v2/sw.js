@@ -2,13 +2,13 @@
    Serves the game from a cache straight away and refreshes the cache in the
    background, so the game opens without a connection and updates itself the
    next time it is opened. */
-const CACHE = "little-star-witch-v11";
+const CACHE = "little-star-witch-v12";
 const CORE = [
   "./", "index.html", "style.css", "icon.svg", "manifest.webmanifest",
   "record.html", "record.css", "js/record.js",
   "lib/three.min.js",
   "voice/manifest.js",
-  "js/words.js", "js/core.js", "js/voice.js", "js/textures.js", "js/engine.js", "js/models.js", "js/world.js", "js/game.js", "js/brew.js", "js/ui.js", "js/main.js",
+  "js/words.js", "js/core.js", "js/track.js", "js/voice.js", "js/textures.js", "js/engine.js", "js/models.js", "js/world.js", "js/game.js", "js/brew.js", "js/ui.js", "js/main.js",
   "fonts/fredoka-latin-500-normal.woff2", "fonts/fredoka-latin-600-normal.woff2", "fonts/fredoka-latin-700-normal.woff2",
   "fonts/andika-latin-400-normal.woff2", "fonts/andika-latin-700-normal.woff2",
 ];

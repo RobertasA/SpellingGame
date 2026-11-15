@@ -1,5 +1,25 @@
 # Changelog
 
+## Little Star Witch 2.5
+
+**Profiles**
+- The grown-ups page has a list of profiles. Each is a game of its own: stars, friends, outfits,
+  words and key practice. Add one from the beginning, or as a copy of the current game, to try
+  things out without touching the game already there. The existing game becomes the first
+  profile ("My game") and stays exactly where it was stored.
+- With more than one profile, the title page shows whose game is open.
+
+**Save file**
+- "Download save file" saves the current profile as one file: progress, key timings and the
+  play diary. "Load a save file" adds a file as a new profile — it never replaces anything.
+
+**Play diary**
+- The game now notes how it is played: the words that came up, the time for every letter, wrong
+  keys, stars that hid, hints, fireflies, brewing slips and peeks, levels left half-way, what was
+  chosen after a level, screens opened, and any errors. It stays on the device (it is only in a
+  downloaded save file) and can be switched off under Settings.
+- `v2/tools/analyse-save.js` prints a summary of a save file.
+
 ## Little Star Witch 2.4
 
 **Letter fireflies**

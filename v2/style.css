@@ -395,6 +395,12 @@ h1 .t2 { display: block; }
 .settings { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; align-items: center; font-size: 17px; }
 .settings button { font-size: 16px; padding: 7px 16px; min-width: 110px; }
 .voice-setting { margin-bottom: 12px; font-size: 17px; }
+.btn-row.start { justify-content: flex-start; margin-top: 10px; gap: 8px; }
+.profiles .profile { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; margin-top: 6px; border-radius: 14px; background: rgba(120, 90, 200, .08); font-size: 17px; }
+.profiles .profile.here { background: rgba(255, 210, 90, .3); }
+.profiles .who { flex: 1 1 160px; min-width: 0; color: var(--ink); overflow-wrap: anywhere; }
+.profiles .who small { display: block; font-size: 14px; opacity: .75; font-weight: 500; }
+.profiles button.small { font-size: 15px; padding: 6px 14px; }
 .voice-setting .tabs { justify-content: flex-start; margin: 6px 0 8px; }
 .voice-setting .tabs button { font-size: 16px; padding: 8px 14px; }
 .voice-setting a.link { color: var(--plum); text-shadow: none; font-weight: 600; white-space: nowrap; }

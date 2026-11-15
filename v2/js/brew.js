@@ -80,6 +80,7 @@ function startBrew() {
   clearBrewTimers();
   Object.assign(brew, { words: chooseBrewWords(), idx: 0, phase: "idle", word: null, challenge: false, aced: [] });
   brew.dictate = chooseChallenges(brew.words);
+  track("brew", { n: flight.level.n, words: brew.words.map(w => w.text), stars: brew.words.filter((w, i) => brew.dictate[i]).map(w => w.text) });
   $("brewUI").classList.remove("challenge");
   setBrewColor(cauldron, START_BREW);
   showPanel("brewUI");
@@ -134,7 +135,7 @@ function renderSlots() {
 function brewLook() {
   if (mode !== "brew") return;
   const w = brew.words[brew.idx];
-  Object.assign(brew, { word: w, phase: "look", challenge: false, slot: 0, inG: 0, wrong: 0, slips: 0, peeks: 0, tiles: [] });
+  Object.assign(brew, { word: w, phase: "look", challenge: false, slot: 0, inG: 0, wrong: 0, slips: 0, peeks: 0, tiles: [], helped: false, t0: null, bad: [], typed: 0, tapped: 0 });
   $("brewUI").classList.remove("challenge");
   $("brewPic").textContent = w.emoji;
   $("brewTiles").innerHTML = "";
@@ -151,7 +152,7 @@ function brewLook() {
 function brewHear() {
   if (mode !== "brew") return;
   const w = brew.words[brew.idx];
-  Object.assign(brew, { word: w, phase: "spell", challenge: true, slot: 0, inG: 0, wrong: 0, slips: 0, peeks: 0, tiles: [], keys: {}, helped: false });
+  Object.assign(brew, { word: w, phase: "spell", challenge: true, slot: 0, inG: 0, wrong: 0, slips: 0, peeks: 0, tiles: [], keys: {}, helped: false, t0: clock, bad: [], typed: 0, tapped: 0 });
   $("brewUI").classList.add("challenge");
   $("brewPic").textContent = w.emoji || "👂";
   // a whole keyboard to write with, laid out like the one used for flying
@@ -218,6 +219,7 @@ function makeTiles(w) {
 function brewCover() {
   if (mode !== "brew") return;
   brew.phase = "spell";
+  brew.t0 = clock;
   brew.tiles = makeTiles(brew.word);
   const box = $("brewTiles");
   box.innerHTML = "";
@@ -283,8 +285,8 @@ function brewPick(i) {
   if (mode !== "brew" || brew.phase !== "spell" || paused) return;
   const tile = brew.tiles[i];
   if (!tile || tile.used) return;
-  if (tile.t === brew.word.graphemes[brew.slot].t) fillSlot();
-  else brewWrong(tile.el);
+  if (tile.t === brew.word.graphemes[brew.slot].t) { brew.tapped++; fillSlot(); }
+  else { brew.bad.push(`${brew.slot}:${tile.t}`); brewWrong(tile.el); }
 }
 
 /** Typing on a real keyboard works too, letter by letter. */
@@ -295,9 +297,10 @@ function brewLetter(ch) {
     if (brew.slot === 0 && brew.inG === 0) keyClockStart(); else noteKeyTime(ch);
     if (brew.challenge) { brew.keys[ch].classList.remove("glow"); brew.wrong = 0; }
     brew.inG++;
+    brew.typed++;
     if (brew.inG >= g.length) fillSlot();
     else { sfx.tick(); renderSlots(); }
-  } else { noteKeyMiss(g[brew.inG], ch); brewWrong(null); }
+  } else { noteKeyMiss(g[brew.inG], ch); brew.bad.push(`${brew.slot}:${g.slice(0, brew.inG)}${ch}`); brewWrong(null); }
 }
 
 function brewPeek() {
@@ -326,6 +329,8 @@ function brewWordDone() {
   noteWord(w.text, brew.slips === 0 && brew.peeks === 0);
   // a challenge word written with no peeking and no lit-up letters earns a star of its own
   const aced = brew.challenge && brew.peeks === 0 && !brew.helped;
+  track("brewWord", { w: w.text, kind: brew.challenge ? "hear" : "look", ms: playMs(brew.t0), slips: brew.slips || null, peeks: brew.peeks || null,
+                      helped: brew.helped, aced, bad: brew.bad, typed: brew.typed || null, tapped: brew.tapped || null });
   if (aced) {
     brew.aced.push(w.text);
     save.aced = (save.aced || 0) + 1;
@@ -386,6 +391,8 @@ function finishBrew() {
   save.stars[level.n] = Math.max(save.stars[level.n] || 0, stars);
   persist();
   flight.result = { stars, first };
+  track("levelEnd", { n: level.n, stars, first, ms: playMs(flight.t0), missed: flight.missed || null,
+                      newWords: levelFound(level.n).filter(t => !(flight.wordsBefore || []).includes(t)).length || null, critters: flight.newCritters });
   setSkyFullness(skyFullness());
 
   // POOF — a bottle pops out of the cauldron
@@ -427,6 +434,7 @@ function finishBrew() {
         cut.bottle = null;
         save.helped[place.id] = true;
         persist();
+        track("helped", { place: place.id });
         witchAnim.celebrate = 0.001;
       }],
       [3.7, () => {
@@ -440,7 +448,7 @@ function finishBrew() {
     ];
     if (level.n === LEVELS.length) {
       cut.steps.push(
-        [9.2, () => { caption("All the stars are back in the sky. You did it!", 5200, true); sfx.complete(); setSkyFullness(1); witchAnim.celebrate = 0.001; save.seenEnding = true; persist(); }],
+        [9.2, () => { caption("All the stars are back in the sky. You did it!", 5200, true); sfx.complete(); setSkyFullness(1); witchAnim.celebrate = 0.001; save.seenEnding = true; persist(); track("ending"); }],
         [9.6, () => fireworks(6)],
         [14.4, () => showComplete()],
       );

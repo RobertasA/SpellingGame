@@ -107,6 +107,8 @@ function goTitle() {
   layoutCrew();
   setSkyFullness(skyFullness());
   showScreen("titleScreen");
+  track("screen", { s: "title" });
+  renderProfileTag();
   $("playBtn").textContent = Object.keys(save.stars).length ? "▶ Play" : "▶ Start";
   applyView();
 }
@@ -118,6 +120,7 @@ function openMap(p, speak = true) {
   clearHomeStars();
   mode = "map";
   currentPlace = clamp(p, 0, PLACES.length - 1);
+  track("screen", { s: "map", p: currentPlace });
   setBiome(currentPlace);
   setStage(currentPlace);
   stage.visible = true;
@@ -279,6 +282,7 @@ function nextAfterComplete() {
 function togglePause() {
   if (mode !== "flight" && mode !== "brew") return;
   paused = !paused;
+  track(paused ? "pause" : "resume", { mode, hidden: document.hidden });
   keyClockStop();
   showScreen(paused ? "pauseScreen" : null);
   if (mode === "flight") { showKeyboard(!paused); $("keyMap").classList.toggle("show", !paused && !!keyMapLit); }
@@ -316,6 +320,7 @@ function setRealKeys(on) {
   if (realKeys === on) return;
   realKeys = on;
   save.realKeys = on; persist();
+  track("input", { real: on, mode });
   refreshScreenKeys();
 }
 function refreshScreenKeys() {
@@ -388,6 +393,7 @@ let wardrobeTab = 0;
 function openWardrobe() {
   leaveEverything();
   mode = "wardrobe";
+  track("screen", { s: "wardrobe" });
   stage.visible = false;
   layoutCrew();
   showPanel("wardrobeUI");
@@ -419,11 +425,13 @@ function renderWardrobe() {
     b.addEventListener("click", () => {
       if (locked) {
         sfx.wrong();
+        track("locked", { k: tab.key, i, have });
         toast(`Collect ${item.stars} ⭐ to wear this!<br><small>You have ${have}.</small>`);
         return;
       }
       save.look[tab.key] = i;
       persist();
+      track("look", { k: tab.key, i });
       rebuildWitch();
       sfx.pop();
       burst(witch.position.clone().add(new THREE.Vector3(0, 0.8, 0.5)), [0xffe27a, 0xffffff, 0xff9ccf], 14, 2.5);
@@ -446,6 +454,7 @@ let showcase = [];
 function openFriends() {
   leaveEverything();
   mode = "friends";
+  track("screen", { s: "friends" });
   stage.visible = false;
   layoutCrew();
   $("friendsBar").classList.add("active");
@@ -535,6 +544,7 @@ function introSteps() {
 function startStory(steps, then) {
   leaveEverything();
   mode = "story";
+  track("screen", { s: "story" });
   stage.visible = false;
   layoutCrew();
   Object.assign(story, { steps, i: -1, then, actors: [], rain: false, view: null, speed: 0 });
@@ -564,6 +574,7 @@ function endStory() {
 function finishStory() {
   const then = story.then;
   story.then = null;
+  if (story.steps && story.steps.length) track("story", { seen: Math.min(story.i + 1, story.steps.length), of: story.steps.length });
   save.seenIntro = true;
   persist();
   curtain(() => { endStory(); then ? then() : goTitle(); });
@@ -589,6 +600,7 @@ function updateStory(dt) {
 /* ------------------------------ grown-ups ----------------------------- */
 
 function openGrown() {
+  track("screen", { s: "grown" });
   renderGrown();
   showScreen("grownScreen");
 }
@@ -610,8 +622,10 @@ function renderGrown() {
       applyQuality();
     }],
     ["Unlock every level and outfit", () => save.unlockAll ? "On" : "Off", () => { save.unlockAll = !save.unlockAll; }],
+    ["Keep a play diary (it stays on this device)", () => save.diary !== false ? "On" : "Off", () => { save.diary = save.diary === false; }],
   ];
   renderVoiceSetting();
+  renderProfiles();
   $("version").textContent = `Little Star Witch ${VERSION}`;
   const box = $("settings");
   box.innerHTML = "";
@@ -621,7 +635,7 @@ function renderGrown() {
     const b = document.createElement("button");
     b.className = "ghost";
     b.textContent = value();
-    b.addEventListener("click", () => { toggle(); persist(); b.textContent = value(); setIcons(); });
+    b.addEventListener("click", () => { toggle(); persist(); b.textContent = value(); setIcons(); track("set", { k: label.split(" (")[0], v: value() }); renderSaveNote(); });
     box.append(l, b);
   }
   const wob = wobblyWords().slice(0, 24);
@@ -639,6 +653,93 @@ function renderGrown() {
     }
   });
   $("curriculum").innerHTML = html;
+}
+
+/* Profiles and the save file (the storage side is in core.js and track.js). */
+
+/** On the title page: whose game this is — shown only once there is more than one. */
+function renderProfileTag() {
+  const tag = $("profileTag");
+  tag.style.display = profiles.list.length > 1 ? "" : "none";
+  tag.textContent = `👤 ${profile.name}`;
+}
+function renderProfiles() {
+  const box = $("profiles");
+  box.innerHTML = "";
+  const btn = (label, fn, cls = "ghost small") => {
+    const b = document.createElement("button");
+    b.className = cls;
+    b.textContent = label;
+    b.addEventListener("click", fn);
+    return b;
+  };
+  for (const p of profiles.list) {
+    const here = p.id === profile.id;
+    const row = document.createElement("div");
+    row.className = "profile" + (here ? " here" : "");
+    const name = document.createElement("div");
+    name.className = "who";
+    const b = document.createElement("b");
+    b.textContent = p.name;                     // (a name is typed in by hand: never put it in as HTML)
+    const small = document.createElement("small");
+    small.textContent = `${here ? "playing now · " : ""}${profileSummary(p.id)}`;
+    name.append(b, small);
+    row.appendChild(name);
+    if (!here) row.appendChild(btn("▶ Play", () => switchProfile(p.id), "mint small"));
+    row.appendChild(btn("Rename", () => {
+      const name = prompt("A name for this profile:", p.name);
+      if (name == null) return;
+      renameProfile(p.id, name);
+      renderProfiles(); renderProfileTag();
+    }));
+    if (!here && p.id !== MAIN_PROFILE) row.appendChild(btn("Delete", () => {
+      if (!confirm(`Delete the profile "${p.name}"? Its stars, friends, outfits and play diary will be gone for good.`)) return;
+      deleteProfile(p.id);
+      renderProfiles(); renderProfileTag();
+    }));
+    box.appendChild(row);
+  }
+  const make = (data, suggest) => {
+    const name = prompt("A name for the new profile:", suggest);
+    if (name == null) return;
+    const id = addProfile(name, data);
+    if (!id) { alert("There is no room left in this browser's storage for another profile."); return; }
+    switchProfile(id);
+  };
+  const row = document.createElement("div");
+  row.className = "btn-row start";
+  row.append(
+    btn("＋ New profile (from the beginning)", () => make(null, `Game ${profiles.list.length + 1}`)),
+    btn("＋ Copy of this game", () => { persist(); make(JSON.parse(JSON.stringify(save)), `${profile.name} (copy)`); }),
+  );
+  box.appendChild(row);
+  renderSaveNote();
+}
+function renderSaveNote() {
+  flushLog();
+  const n = readLog(profile.id).length;
+  $("saveNote").textContent = `The save file holds everything about "${profile.name}": progress, key timings and the play diary`
+    + (save.diary === false ? " (the diary is switched off)" : ` (${n} event${n === 1 ? "" : "s"} so far)`)
+    + ". Keep it as a backup, or send it to whoever is working on the game. Loading a save file adds it as a new profile: nothing here is replaced.";
+}
+/** A save file was chosen: it becomes a new profile (never written over an existing one). */
+function loadSaveFile(e) {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  if (file.size > 8e6) { alert("That file is too big to be a Little Star Witch save file."); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const data = parseSaveFile(String(reader.result));
+    if (!data) { alert("That doesn't look like a Little Star Witch save file."); return; }
+    const name = prompt("Load this save file as a new profile called:", data.name ? `${data.name} (loaded)` : "Loaded game");
+    if (name == null) return;
+    const id = addProfile(name, data.save, data.log);
+    if (!id) { alert("There is no room left in this browser's storage for another profile."); return; }
+    switchProfile(id);
+  };
+  reader.onerror = () => alert("The file could not be read.");
+  reader.readAsText(file);
 }
 
 /** Where each key has got to in key practice, set out in order of how common the letters are in English. */
@@ -710,6 +811,7 @@ function renderKeyStats() {
     if (!confirm("Clear the key timings and key practice? Stars and everything else are kept.")) return;
     save.keys = {}; save.focus = []; save.drills = 0;
     persist();
+    track("keysClear");
     renderKeyStats();
   });
 }
@@ -721,6 +823,7 @@ function setVoice(mode) {
   save.voice = mode;
   if (mode === "off") hush();
   persist();
+  track("set", { k: "voice", v: mode });
   setIcons();
 }
 function voiceStatusText() {
@@ -776,11 +879,12 @@ function wireUI() {
   on("grownBtn", openGrown);
   on("grownBack", () => { showScreen(mode === "title" ? "titleScreen" : null); if (mode === "title") goTitle(); });
   on("resetBtn", () => {
-    if (!confirm("Start again from the very beginning? All stars, friends and outfits will be cleared.")) return;
+    const whose = profiles.list.length > 1 ? ` in "${profile.name}"` : "";
+    if (!confirm(`Start again from the very beginning? All stars, friends and outfits${whose} will be cleared.\n\n(To try a new game and keep this one, add a profile instead.)`)) return;
     keyNews.length = 0;
-    const keep = { muted: save.muted, voice: save.voice, voiceLast: save.voiceLast, kbd: save.kbd, showKbd: save.showKbd, realKeys: save.realKeys, helper: save.helper, gfx: save.gfx, brewMode: save.brewMode };
-    save = { ...freshSave(), ...keep };
+    save = { ...freshSave(), ...deviceSettings() };
     persist();
+    track("reset");
     rebuildWitch();
     goTitle();
   });
@@ -789,14 +893,22 @@ function wireUI() {
   on("mapBack", () => curtain(goTitle));
   on("pauseBtn", togglePause);
   on("resumeBtn", togglePause);
-  on("quitBtn", () => curtain(() => openMap(currentPlace, false)));
-  on("menuBtn", () => curtain(() => openMap(currentPlace, false)));
-  on("replayBtn", () => curtain(() => flight.level.drill ? startDrill() : startLevel(flight.level.n)));
-  on("nextBtn", nextAfterComplete);
+  on("quitBtn", () => {
+    track("quit", { n: flight.level.n, mode, sent: flight.sent, need: flight.need, brewed: mode === "brew" ? brew.idx : null, ms: playMs(flight.t0) });
+    curtain(() => openMap(currentPlace, false));
+  });
+  on("menuBtn", () => { track("after", { n: flight.level.n, pick: "map" }); curtain(() => openMap(currentPlace, false)); });
+  on("replayBtn", () => { track("after", { n: flight.level.n, pick: "again" }); curtain(() => flight.level.drill ? startDrill() : startLevel(flight.level.n)); });
+  on("nextBtn", () => { track("after", { n: flight.level.n, pick: "next" }); nextAfterComplete(); });
+  on("profileTag", openGrown);
+  on("saveDownload", () => { downloadSaveFile(); toast("Save file downloaded ⬇"); });
+  on("saveLoad", () => $("saveFile").click());
+  $("saveFile").addEventListener("change", loadSaveFile);
   document.querySelectorAll(".mute-toggle").forEach(b => b.addEventListener("click", () => {
     startMusic();
     save.muted = !save.muted;
     persist();
+    track("set", { k: "muted", v: save.muted ? "on" : "off" });
     setIcons();
     if (save.muted) { music.pause(); hush(); } else playMusic();
   }));
@@ -811,7 +923,7 @@ function wireUI() {
       toast("You read — I'll be quiet 🤫");
     }
   }));
-  on("brewSay", () => { if (brew.word) say(brew.word.text, { rate: 0.75, force: true, cut: true }); });
+  on("brewSay", () => { if (brew.word) { say(brew.word.text, { rate: 0.75, force: true, cut: true }); track("hear", { w: brew.word.text, where: "brew" }); } });
   on("brewPeek", brewPeek);
   on("storyNext", storyNext);
   on("storySkip", finishStory);

@@ -128,6 +128,8 @@ No build step and no dependencies to install. Plain scripts, loaded in order:
 | `v2/js/engine.js` | renderer, lights, post-processing, materials, shape helpers, mesh merging, particles, camera |
 | `v2/js/models.js` | the witch, her cat, the six friends, cauldron, stars, wardrobe colours |
 | `v2/js/world.js` | sky, moon, terrain, water, the six biomes with their scenery, ground cover and hiding spots |
+| `v2/js/track.js` | the play diary, the save file, profiles |
+| `v2/tools/analyse-save.js` | prints a summary of a downloaded save file (Node) |
 | `v2/js/game.js` | the flying part: words, typing, stars, level flow |
 | `v2/js/brew.js` | the brewing part and the "friend gets a potion" scenes |
 | `v2/js/ui.js` | title, map, dress up, friends, story, grown-ups page |
@@ -138,7 +140,25 @@ No build step and no dependencies to install. Plain scripts, loaded in order:
 To add or change words, edit `v2/js/words.js` — the notation is explained at the top of the file
 (`"sh.i.p:🚢"` is *ship*, split into its three sounds, with a picture clue).
 
-Progress is stored in the browser's `localStorage` under `littleStarWitch.v2`.
+### Profiles, the save file and the play diary
+
+- **Profiles** (grown-ups page): each profile is a separate game. The first one lives in the
+  browser's `localStorage` under `littleStarWitch.v2`, exactly where the only save used to be,
+  so a game from before profiles carries on untouched; the others are under
+  `littleStarWitch.v2.p.<id>`, and the list is in `littleStarWitch.v2.profiles`. A new profile
+  can start from the beginning or as a copy of the current game.
+- **Save file**: "Download save file" gives one JSON file for the current profile — the save,
+  the play diary and a little about the device. "Load a save file" adds it back as a *new*
+  profile; it never replaces one.
+- **Play diary**: while playing, small events are noted beside the save (which words came up,
+  the time for each letter, wrong keys, stars that hid, peeks, where a level was left, which
+  screens were opened…). Nothing is sent anywhere; it only leaves the device inside a
+  downloaded save file. It is kept to about 1.5 MB per profile (the oldest goes first) and can
+  be switched off on the grown-ups page. The events are described at the top of
+  `v2/js/track.js`.
+- **Looking at a save file**: `node v2/tools/analyse-save.js <file.json>` prints a summary —
+  time played, how each level went, the words and keys that give trouble, brewing, and where
+  play stops.
 
 ### How it is drawn
 

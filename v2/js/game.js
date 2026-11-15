@@ -214,6 +214,7 @@ function maybeVisitor(star) {
   flight.visited = true;
   const isNew = !save.critters[c.id];
   save.critters[c.id] = true;
+  track("critter", { id: c.id, fresh: isNew });
   if (isNew) flight.newCritters.push(c.id);
   const at = star.spot.getWorldPosition(new THREE.Vector3());
   at.y = 0;
@@ -386,10 +387,11 @@ function spawnStar() {
   label.className = "label";
   label.style.opacity = "0";
   label.innerHTML = `<div class="word${word.tricky ? " tricky" : ""}"></div><div class="timer"><i></i></div>`;
-  label.firstChild.addEventListener("pointerdown", () => say(word.text, { rate: 0.75, force: true, cut: true }));    // tap a word to hear it
+  label.firstChild.addEventListener("pointerdown", () => { say(word.text, { rate: 0.75, force: true, cut: true }); track("hear", { w: word.text, where: "star" }); });    // tap a word to hear it
   labelsEl.appendChild(label);
 
-  const star = { word, colorIndex, typed: 0, errors: 0, root, spot, mesh, label, restY, state: "waiting", t: 0, wiggle: 0, phase: rand(0, 6), life: wordLife(word) };
+  const star = { word, colorIndex, typed: 0, errors: 0, root, spot, mesh, label, restY, state: "waiting", t: 0, wiggle: 0, phase: rand(0, 6), life: wordLife(word),
+                 shown: null, last: null, log: { keys: [], wrong: [], hints: [], rel: 0 } };       // for the play diary
   flight.stars.push(star);
   renderWord(star);
 }
@@ -432,6 +434,7 @@ function updateStars(dt) {
     if (star.state === "waiting" && star.root.position.x <= REVEAL_X) {
       star.state = "rising";
       star.t = 0;
+      star.shown = star.last = clock;
       m.visible = true;
       star.label.style.opacity = "1";
       star.spot.userData.rustle = 0.5;
@@ -540,6 +543,7 @@ function missStar(star, counted = true) {
   star.label.style.opacity = "0";
   if (flight.target === star) { flight.target = null; keyClockStop(); }
   if (!counted) return;
+  trackStar(star, "hid");
   sfx.hide();
   flight.missed++;
   if (flight.level.drill) noteKeyHid(star.word.text);          // the letter comes round again by itself
@@ -551,6 +555,15 @@ function missStar(star, counted = true) {
   flight.pending.push(0.6);
   setNudge(false);
   if (!save.tips.hid) { save.tips.hid = 1; persist(); hint("Oops, the star hid! It will come back. 💫", 4000); }
+}
+
+/** The play diary's note of how a star went (see track.js). */
+function trackStar(star, out) {
+  const l = star.log;
+  track(flight.level.drill ? "key" : "word", {
+    w: star.word.text, out, ms: playMs(star.shown), keys: l.keys, wrong: l.wrong, hints: l.hints, rel: l.rel || null,
+    typed: out === "hid" ? star.typed : null,
+  });
 }
 
 /** A spot high in the sky, in view, for a star to fly home to. */
@@ -580,6 +593,7 @@ function sendHome(star) {
   flight.target = null;
   setNudge(false);
   renderWords();
+  trackStar(star, "home");
 
   sfx.collect();
   witchAnim.hop = 1;
@@ -625,7 +639,8 @@ function flightLetter(letter) {
     // the first letter chooses a star — the one closest to the witch wins ties
     const match = live.filter(s => s.word.text[0] === letter).sort((a, b) => a.root.position.x - b.root.position.x)[0];
     if (!match) {
-      if (live.length === 1) { noteKeyMiss(live[0].word.text[0], letter); queueFirefly(live[0].word.text[0]); }     // only one star to aim at: its first key was wanted
+      if (live.length === 1) { noteKeyMiss(live[0].word.text[0], letter); queueFirefly(live[0].word.text[0]); live[0].log.wrong.push("0" + letter); }     // only one star to aim at: its first key was wanted
+      else flight.stray.push(letter);
       sfx.wrong();
       live.forEach(wiggle);
       flight.idle += 2;               // the helper glow arrives sooner
@@ -639,6 +654,9 @@ function flightLetter(letter) {
     else if (star.typed === 0) keyClockStart();
     else noteKeyTime(letter, { hinted: flight.nudge });
     sfx.key(star.typed);
+    star.log.keys.push(playMs(star.last));
+    if (flight.nudge) star.log.hints.push(star.typed);
+    star.last = clock;
     star.typed++;
     flight.idle = 0;
     setNudge(false);
@@ -652,6 +670,7 @@ function flightLetter(letter) {
     // (a slip that is the first letter of another star on screen was probably meant for that star)
     if (!live.some(s => s !== star && s.word.text[0] === letter)) { noteKeyMiss(star.word.text[star.typed], letter); queueFirefly(star.word.text[star.typed]); }
     sfx.wrong();
+    star.log.wrong.push(star.typed + letter);
     star.errors++;
     wiggle(star);       // no progress lost — just a gentle nudge
     if (star.errors >= 2) { flight.idle = 99; }      // show which key comes next
@@ -661,6 +680,8 @@ function flightLetter(letter) {
 function releaseTarget() {
   if (mode !== "flight" || !flight.target) return;
   keyClockStop();
+  const l = flight.target.log;
+  l.rel++; l.keys = []; l.hints = [];
   flight.target.typed = 0;
   flight.target = null;
   renderWords();
@@ -753,7 +774,7 @@ function popFirefly() {
   label.style.opacity = "0";
   label.innerHTML = `<div class="word bug"></div><div class="timer"><i></i></div>`;
   labelsEl.appendChild(label);
-  const f = flight.fly = { ch, mesh, label, x: spot[0], y: spot[1], state: "in", t: 0, life: FLY_LIFE, phase: rand(0, 6), wiggle: 0 };
+  const f = flight.fly = { ch, mesh, label, x: spot[0], y: spot[1], state: "in", t: 0, life: FLY_LIFE, phase: rand(0, 6), wiggle: 0, shown: clock, wrong: [] };
   renderFly();
   label.style.opacity = "1";
   flySfx.pop();
@@ -779,6 +800,7 @@ function fireflyLetter(letter) {
   if (letter === f.ch) {
     noteKeyTime(letter, { hinted: flight.nudge, trim: KEY_NOTICE_MS });
     keyClockStop();
+    track("fly", { ch: f.ch, out: "caught", ms: playMs(f.shown), wrong: f.wrong, hint: flight.nudge });
     f.state = "caught";
     f.t = 0;
     f.label.style.opacity = "0";
@@ -797,6 +819,7 @@ function fireflyLetter(letter) {
     persist();
   } else {
     noteKeyMiss(f.ch, letter);
+    f.wrong.push(letter);
     sfx.wrong();
     f.label.classList.remove("wiggle");
     void f.label.offsetWidth;
@@ -829,6 +852,7 @@ function updateFirefly(dt) {
       f.label.style.opacity = "0";
       noteKeyHid(f.ch);
       keyClockStop();
+      track("fly", { ch: f.ch, out: "away", wrong: f.wrong, hint: flight.nudge });
       flySfx.away();
       setNudge(false);
       persist();
@@ -879,12 +903,15 @@ function startLevel(n) {
     need: level.stars, lastLane: -1, idle: 0, nudge: false, arriving: false, jar: [], played: [],
     starsBefore: starCount(), visited: false, newCritters: [],
     wordsBefore: levelFound(level.n),                 // words already found, so the results can say which are new
+    t0: clock, stray: [],
   });
   gatherVisitors();
   flight.warm = warmupLetters();                // a few fireflies for the hard keys first, then the words
   flight.extra = []; flight.extras = 0; flight.lastFly = null; flight.started = true;
   if (flight.warm.length) { flight.started = false; flight.pending.push(1.8); }
   else startStars();
+  track("level", { n, words: flight.queue.map(w => w.text), warm: flight.warm.join(""), own: flight.budget.own, extra: flight.budget.extra.join(""),
+                   known: introducedKeys().split("").filter(ch => keyBox(ch) >= KEY_KNOWN).join(""), again: !!save.stars[n] });
   mode = "flight";
   paused = false;
   $("hud").classList.add("active");
@@ -920,7 +947,9 @@ function startDrill() {
     level, queue: [], target: null, pending: [1.4], sent: 0, missed: 0,
     need: level.stars, lastLane: -1, idle: 0, nudge: false, arriving: false, jar: [], played: [],
     starsBefore: starCount(), visited: false, newCritters: [], lastKey: null, learnt: [],
+    t0: clock, stray: [],
   });
+  track("drill", { focus: level.focus.replace(/ /g, "") });
   gatherVisitors();
   mode = "flight";
   paused = false;
@@ -939,6 +968,7 @@ function startDrill() {
   }
 }
 function endDrill() {
+  track("drillEnd", { sent: flight.sent, missed: flight.missed, ms: playMs(flight.t0), learnt: flight.learnt.join(""), stray: flight.stray.join("") });
   mode = "drillDone";
   showKeyboard(false);
   glowKey(null);
@@ -999,6 +1029,7 @@ function updateFlight(dt) {
 
 function endFlight() {
   if (flight.level.drill) { endDrill(); return; }
+  track("flightEnd", { n: flight.level.n, sent: flight.sent, missed: flight.missed, ms: playMs(flight.t0), stray: flight.stray.join("") });
   mode = "toBrew";
   showKeyboard(false);
   glowKey(null);

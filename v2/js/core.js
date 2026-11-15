@@ -3,7 +3,7 @@
    Core: tiny helpers, saved progress, sound
    ===================================================================== */
 
-const VERSION = "2.4";
+const VERSION = "2.5";
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -22,7 +22,30 @@ function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2)
 
 /* ============================ saved progress ============================ */
 
+/* Profiles: each has its own save, so a new game can be tried out without touching another one.
+   The first profile ("main") lives under SAVE_KEY itself, exactly where the only save used to be,
+   so a game from before profiles carries on untouched. Others live under SAVE_KEY.p.<id>. */
 const SAVE_KEY = "littleStarWitch.v2";
+const PROFILES_KEY = SAVE_KEY + ".profiles";
+const MAIN_PROFILE = "main";
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* storage unavailable */ } }
+function profileKey(id) { return id === MAIN_PROFILE ? SAVE_KEY : `${SAVE_KEY}.p.${id}`; }
+function loadProfiles() {
+  let p = null;
+  try { p = JSON.parse(lsGet(PROFILES_KEY)); } catch (e) { /* corrupted: start the list again (the saves themselves are not touched) */ }
+  if (!p || !Array.isArray(p.list)) p = { current: MAIN_PROFILE, list: [] };
+  p.list = p.list.filter(x => x && typeof x.id === "string" && /^[a-z0-9]+$/.test(x.id));
+  if (!p.list.some(x => x.id === MAIN_PROFILE)) p.list.unshift({ id: MAIN_PROFILE, name: "My game" });
+  if (!p.list.some(x => x.id === p.current)) p.current = MAIN_PROFILE;
+  return p;
+}
+const profiles = loadProfiles();
+const profile = profiles.list.find(x => x.id === profiles.current);       // the one being played (changing it reloads the page)
+const saveKey = profileKey(profile.id);
+function saveProfiles() { return lsSet(PROFILES_KEY, JSON.stringify(profiles)); }
+
 function freshSave() {
   return {
     name: "Hazel",
@@ -48,13 +71,15 @@ function freshSave() {
     critters: {},         // woodland visitor id -> true once it has popped out to say hello
     dry: 0,               // levels played in a row with no new visitor (the next one is then certain)
     gfx: "auto",          // graphics: "auto", "best", "medium" or "fast"
+    diary: true,          // keep the play diary (see track.js)
     unlockAll: false,
   };
 }
-function loadSave() {
+/** A save as stored (or as found in a save file), brought up to date. */
+function loadSave(raw = lsGet(saveKey)) {
   const fresh = freshSave();
   try {
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    const s = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (s && typeof s === "object") {
       const merged = { ...fresh, ...s, look: { ...fresh.look, ...(s.look || {}) }, critters: { ...(s.critters || {}) } };
       // older saves had a plain on/off switch called "speak"
@@ -69,7 +94,12 @@ function loadSave() {
 }
 let save = loadSave();
 function persist() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage unavailable */ }
+  lsSet(saveKey, JSON.stringify(save));
+}
+/** The settings that belong to the tablet and the grown-up rather than to one game: kept when starting afresh. */
+function deviceSettings() {
+  const { muted, voice, voiceLast, kbd, showKbd, realKeys, helper, gfx, brewMode, diary } = save;
+  return { muted, voice, voiceLast, kbd, showKbd, realKeys, helper, gfx, brewMode, diary };
 }
 
 function starCount() { return Object.values(save.stars).reduce((a, b) => a + b, 0); }
